@@ -1,0 +1,79 @@
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+build/
+dist/
+develop-eggs/
+downloads/
+eggs/
+.eggs/
+lib60/
+sdist/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# ---- Environments ----
+.venv/
+venv/
+env/
+ENV/
+.python-version
+.conda/
+
+# ---- Testing / typing / linting caches ----
+.pytest_cache/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.ruff_cache/
+.hypothesis/
+.tox/
+.nox/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+*.cover
+
+# ---- Notebooks ----
+.ipynb_checkpoints/
+
+# ---- Editors / OS ----
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---- Experiment outputs ----
+# Raw run outputs are large and regenerable from configs + seeds.
+# They are NOT committed; reproducibility comes from configs, seeds, code version,
+# and the commands recorded in docs/research_log.md.
+results/**
+!results/.gitkeep
+!results/README.md
+
+# Committed exception: small, final, paper-backing summary artifacts may be added
+# explicitly with `git add -f` and must be regenerable by a logged command.
+
+# Scratch
+scratch/
+tmp/
+*.log
+
+# ---- Paper build ----
+paper/**/*.aux
+paper/**/*.bbl
+paper/**/*.blg
+paper/**/*.out
+paper/**/*.toc
+paper/**/*.synctex.gz
+paper/**/*.fdb_latexmk
+paper/**/*.fls

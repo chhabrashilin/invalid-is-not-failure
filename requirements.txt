@@ -1,0 +1,35 @@
+# ReSched dependencies — Stage 1 (provisional, unpinned).
+#
+# PROTOCOL NOTE: these are minimum-version constraints, NOT a reproducible pin.
+# Before the first experiment run (Stage 5), exact versions must be frozen
+# (`pip freeze`) and every run must additionally record its own environment into
+# results/<run>/env.json. Do not treat this file as the reproducibility record.
+#
+# Target interpreter: CPython 3.11+
+
+# --- core simulation / numerics ---
+numpy>=1.26
+
+# --- data handling and raw run-level output ---
+pandas>=2.1
+pyarrow>=14.0          # parquet for raw event logs
+
+# --- statistics (CIs, bootstrap, distribution fitting) ---
+scipy>=1.11
+
+# --- configuration ---
+pyyaml>=6.0
+
+# --- plotting (analysis/ only) ---
+matplotlib>=3.8
+
+# --- testing and quality ---
+pytest>=7.4
+hypothesis>=6.90       # property-based tests for simulator invariants
+mypy>=1.8
+ruff>=0.3
+
+# --- simple predictive models for failure/runtime estimation (Stage 5, H5) ---
+# Protocol item 7: start with empirical estimates and logistic regression;
+# add gradient-boosted trees only if experiments justify it.
+scikit-learn>=1.4
