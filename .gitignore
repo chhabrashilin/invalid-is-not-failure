@@ -72,6 +72,10 @@ artifacts/**
 !artifacts/phase0/.gitkeep
 !artifacts/phase0/*/phase0_report.json
 !artifacts/phase0/*/snapshot.json
+!artifacts/phase0_5/
+!artifacts/phase0_5/call_ledger.json
+!artifacts/phase0_5/availability/
+!artifacts/phase0_5/availability/*.json
 
 results/**
 !results/.gitkeep

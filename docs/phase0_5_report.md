@@ -1,4 +1,144 @@
-# Phase 0.5 Report
+# Phase 0.5 Availability + Real-Agent Report
+
+Date: 2026-08-29. Continuation from commit `0be22fe`. This section supersedes
+the older Phase 0.5 status below while retaining it as provenance. No Phase 1A
+work was started and no research hypothesis was changed.
+
+## 1. Availability gate
+
+Exactly `gemini/gemini-3.7-flash` was probed with the fixed prompt `Reply with
+OK.`; no SWE-bench content was sent. The global ledger started at the five
+physical attempts recorded by `0be22fe` and was not reset.
+
+| metric | result |
+|---|---:|
+| logical probes attempted | 2 (1 completed; 1 interrupted in flight) |
+| probes eventually successful | 0 |
+| physical API attempts in this gate | 7 |
+| first-attempt success rate | 0% |
+| eventual success rate | 0% |
+| 503 responses | 6 |
+| 429 / 401 / 403 / billing / invalid-model errors | 0 |
+| other operational events | 1 in-flight request interrupted |
+| median successful latency | N/A (no successful response) |
+| maximum successful latency | N/A (no successful response) |
+| global ledger | 12/100 used; 88 remain |
+
+Probe 1 exhausted the exact four-attempt policy (initial request, then retries
+after 15 s, 30 s, and 60 s) and ended `PROVIDER_UNAVAILABLE`. Probe 2 returned
+two further 503s. Its second physical request took approximately 384.5 seconds
+to return the second 503; the third request was then interrupted in flight and
+is conservatively counted as a physical attempt but not as a 503. The immutable
+summary is `artifacts/phase0_5/availability/gate-20260829T154832Z.json`; the
+shared ledger is `artifacts/phase0_5/call_ledger.json`.
+
+These observations are an infrastructure gate, not a Gemini capability or
+performance benchmark.
+
+## 2. Gate decision
+
+**STOP.** The gate requires at least five successful logical probes and at least
+80% eventual success. It observed zero successful probes. Although 88 call slots
+remain and no auth/quota/billing error appeared, the availability conditions are
+not met.
+
+Per the predeclared rule, SWE-bench was not launched. No model or provider was
+substituted.
+
+## 3. Real parent trajectory, if run
+
+Not run because the availability gate stopped. Therefore there is no parent
+validity label, no trajectory model-call count, no evaluator outcome, and no
+infrastructure rerun. In particular, no benchmark failure label was fabricated.
+
+## 4. Feature audit
+
+No real-data feature audit was possible. The implementation audit is complete:
+
+- provider attempts are written as separate `ProviderCallRecord` objects with
+  `provider_attempt_count`, `provider_503_count`,
+  `provider_retry_delay_total`, and `provider_final_status`;
+- provider records are stored in `provider_calls.jsonl`, outside the semantic
+  `StepRecord` stream consumed by Model A/Model B feature extraction;
+- only the recovered successful response reaches the agent; a recovered 503
+  cannot increment failed-tool counters or behavioral failure features;
+- exhaustion raises `PROVIDER_UNAVAILABLE`; its scientific disposition is
+  invalid and the schema forbids assigning `Y_success`.
+
+## 5. Checkpoint / restore
+
+Not run because no valid parent trajectory exists. The prior mock checkpoint
+evidence is not promoted to real-provider evidence.
+
+## 6. Same-condition forks
+
+CONTROL A and CONTROL B were not run because the gate stopped before the
+parent. No valid or invalid fork was created or replaced.
+
+## 7. Agent divergence vs provider events
+
+There were no agent actions and therefore no agent/sampling divergence to
+measure. Provider availability events were: seven physical requests, six 503
+responses, 150 seconds of declared retry delay across the two attempted logical
+probes, and one interrupted in-flight request. None is counted as a trajectory
+action or behavioral failure.
+
+## 8. Preliminary K6
+
+**K6_STATUS = UNTESTED.** There are fewer than two valid same-condition
+continuations because the availability gate prevented any continuation. Per the
+protocol this requires Phase 0.5 to remain `MODIFY`.
+
+## 9. Actual free-tier spend
+
+**$0.00 actual spend.** The same Gemini Developer API free-tier credential and
+model were used. No paid priority inference, billing enablement, fallback model,
+or substitute provider was used.
+
+## 10. Operational profile
+
+The first logical probe used four physical attempts and 105 seconds of explicit
+backoff before `PROVIDER_UNAVAILABLE`. The second used three reserved physical
+attempts and 45 seconds of explicit backoff; two completed as 503 and the third
+was interrupted while awaiting a response. One completed physical request took
+approximately 384.5 seconds before returning 503. This is sufficient to fail the
+availability gate, but it is not interpreted as a model performance benchmark.
+
+## 11. Tests
+
+The seven required regressions were added, plus a guard that disables hidden
+LiteLLM retries so every physical request is ledgered. Focused provider/adapter
+tests pass. The full suite passes with one environment-dependent Docker test
+skipped: **113 passed, 1 skipped** (Docker/image unavailable) in 17.26 seconds.
+
+## 12. PASS / MODIFY / FAIL
+
+**MODIFY** — provider availability insufficient for a valid real-agent
+checkpoint/fork test at this time.
+
+## 13. Blockers before Phase 1A
+
+1. `gemini/gemini-3.7-flash` must pass the same conservative availability gate.
+2. One valid parent trajectory and independent official-patch evaluation must
+   complete.
+3. A real checkpoint/restore and at least two valid same-condition control
+   continuations must complete, allowing a preliminary K6 assessment.
+
+No model/provider change, billing change, fallback, or hypothesis change is
+authorized as a workaround.
+
+## 14. Proposed Phase 1A only if PASS
+
+Not proposed: Phase 0.5 is `MODIFY`, not `PASS`. Phase 1A remains stopped.
+
+## 15. git diff --stat / status / commit
+
+The work starts from `0be22fe`. The final diff stat, clean/dirty status, and
+continuation commit are reported in the handoff after tests and commit.
+
+---
+
+# Archived Phase 0.5 Report
 
 Date: 2026-08-29. Branch `phase0.5-real-agent-validation` (from `a812835`).
 

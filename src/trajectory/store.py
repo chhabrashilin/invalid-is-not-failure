@@ -21,12 +21,13 @@ from typing import Any, Iterable
 
 from pydantic import BaseModel
 
-from trajectory.schema import SessionMeta, StepRecord, TrajectoryPrefix
+from trajectory.schema import ProviderCallRecord, SessionMeta, StepRecord, TrajectoryPrefix
 
 RAW_STEPS = "steps.jsonl"
 RAW_SESSION = "session.json"
 RAW_OUTCOME = "outcome.json"          # Class C -- never read by prefix loading
 RAW_EVALUATION = "evaluation.json"    # Class C -- never read by prefix loading
+RAW_PROVIDER_CALLS = "provider_calls.jsonl"  # operational; excluded from features
 MANIFEST = "manifest.json"
 
 
@@ -70,11 +71,13 @@ class RawTrajectoryWriter:
             )
         self.run_dir.mkdir(parents=True, exist_ok=True)
         self._steps_fh = None
+        self._provider_fh = None
         self._n_steps = 0
         self._closed = False
 
     def __enter__(self) -> "RawTrajectoryWriter":
         self._steps_fh = (self.run_dir / RAW_STEPS).open("a", encoding="utf-8")
+        self._provider_fh = (self.run_dir / RAW_PROVIDER_CALLS).open("a", encoding="utf-8")
         return self
 
     def __exit__(self, *exc: object) -> None:
@@ -92,6 +95,12 @@ class RawTrajectoryWriter:
         self._steps_fh.write(step.model_dump_json() + "\n")
         self._steps_fh.flush()
         self._n_steps += 1
+
+    def write_provider_call(self, record: ProviderCallRecord) -> None:
+        """Append operational request metadata outside the semantic step stream."""
+        assert self._provider_fh is not None, "writer not opened"
+        self._provider_fh.write(record.model_dump_json() + "\n")
+        self._provider_fh.flush()
 
     def write_outcome(self, outcome: BaseModel) -> None:
         """Class-C record. Written to a SEPARATE file that prefix loading ignores."""
@@ -113,6 +122,9 @@ class RawTrajectoryWriter:
         if self._steps_fh is not None:
             self._steps_fh.close()
             self._steps_fh = None
+        if self._provider_fh is not None:
+            self._provider_fh.close()
+            self._provider_fh = None
         manifest = write_manifest(self.run_dir)
         self._closed = True
         return manifest

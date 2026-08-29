@@ -825,3 +825,65 @@ everything downstream.
 
 **Commands:** `uv run --group agent python scripts/phase0/preflight_gemini.py` (exit 2, 0 calls)
 · `MSWEA_SILENT_STARTUP=1 uv run --group agent --group dev pytest` (105 passed).
+
+
+---
+
+## 2026-08-29 — Phase 0.5 (cont. 3): Gemini availability gate — **STOP, MODIFY**
+
+**Stage:** 4B, continuing from `0be22fe`. No Phase 1A, model/provider change,
+billing change, fallback, prompt tuning, or hypothesis change.
+
+### Request-layer correction
+
+mini-SWE-agent 2.4.6's generic LiteLLM layer retries most non-auth exceptions.
+That is unsuitable for this checkpoint because 503 is infrastructure noise and
+429 must surface. A Phase 0.5 provider request executor now owns the policy below
+trajectory semantics: retry only 503, with 15/30/60 second delays and four total
+attempts; surface every other error immediately; disable hidden LiteLLM retries;
+reserve the shared ledger before every physical request; and record provider
+metadata separately from semantic steps. Exhausted 503 yields
+`PROVIDER_UNAVAILABLE`. The scientific-disposition schema forbids a Y_success
+label for such a run.
+
+### Availability gate result
+
+Only `gemini/gemini-3.7-flash` received the fixed prompt `Reply with OK.`. No
+SWE-bench content was sent. The ledger resumed at 5/100 physical attempts from
+the prior preflight history.
+
+| metric | observation |
+|---|---:|
+| logical probes attempted | 2 (1 completed, 1 interrupted in flight) |
+| eventually successful | 0 |
+| physical attempts in gate | 7 |
+| first-attempt / eventual success | 0% / 0% |
+| 503 responses | 6 |
+| 429/auth/billing/invalid-model errors | 0 |
+| successful latency median / max | N/A / N/A |
+| final global ledger | 12/100 used; 88 remain |
+
+Probe 1 exhausted all four attempts and terminated `PROVIDER_UNAVAILABLE`.
+Probe 2 returned two more 503s; its second request took approximately 384.5 s
+before returning. Its third request was interrupted in flight and remains
+counted as a physical attempt without being mislabeled as a 503.
+
+### Gate decision and downstream work
+
+**STOP.** Zero successful probes cannot satisfy the minimum five successes or
+80% eventual success. Consequently no SWE-bench parent, infrastructure rerun,
+independent evaluator, real checkpoint, restore, CONTROL A, or CONTROL B ran.
+No benchmark failure label was fabricated. There are no agent actions, so all
+observed noise is provider availability noise rather than agent divergence.
+
+**K6_STATUS = UNTESTED.** Fewer than two valid same-condition continuations
+exist. **Phase 0.5 = MODIFY** with the predeclared reason: provider availability
+insufficient for a valid real-agent checkpoint/fork test at this time.
+
+**Spend:** $0.00 actual free-tier spend. **Ledger:** 12/100 physical attempts.
+**Artifacts:** `artifacts/phase0_5/call_ledger.json` and
+`artifacts/phase0_5/availability/gate-20260829T154832Z.json`.
+
+**Tests:** 113 passed, 1 skipped (Docker/image unavailable), 17.26 s. The eight
+new regressions cover the seven mandated cases plus suppression of hidden
+LiteLLM retries.

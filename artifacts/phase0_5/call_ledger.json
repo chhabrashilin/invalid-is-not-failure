@@ -1,0 +1,46 @@
+{
+  "phase": "0.5",
+  "accounting_unit": "physical_api_attempt",
+  "max_physical_api_attempts": 100,
+  "physical_api_attempts_used": 12,
+  "physical_api_attempts_remaining": 88,
+  "prior_attempts_at_continuation": 5,
+  "events": [
+    {
+      "ordinal": 6,
+      "scope": "availability-probe",
+      "ts": "2026-08-29T15:48:32.908688+00:00"
+    },
+    {
+      "ordinal": 7,
+      "scope": "availability-probe",
+      "ts": "2026-08-29T15:49:04.128423+00:00"
+    },
+    {
+      "ordinal": 8,
+      "scope": "availability-probe",
+      "ts": "2026-08-29T15:50:04.786762+00:00"
+    },
+    {
+      "ordinal": 9,
+      "scope": "availability-probe",
+      "ts": "2026-08-29T15:51:12.333688+00:00"
+    },
+    {
+      "ordinal": 10,
+      "scope": "availability-probe",
+      "ts": "2026-08-29T15:52:42.349730+00:00"
+    },
+    {
+      "ordinal": 11,
+      "scope": "availability-probe",
+      "ts": "2026-08-29T15:53:16.536841+00:00"
+    },
+    {
+      "ordinal": 12,
+      "scope": "availability-probe",
+      "ts": "2026-08-29T16:00:11.036729+00:00"
+    }
+  ],
+  "updated_at": "2026-08-29T16:00:11.038515+00:00"
+}

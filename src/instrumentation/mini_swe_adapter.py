@@ -29,49 +29,26 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from minisweagent.agents.default import DefaultAgent
+from minisweagent.exceptions import FormatError
+from minisweagent.models.litellm_model import LitellmModel
 
 from evaluation.test_detect import detect_and_parse
+from instrumentation.provider_retry import (
+    CallBudget,
+    CallCapExceeded,
+    NonRetryableProviderError,
+    ProviderRequestExecutor,
+    ProviderUnavailable,
+)
 from instrumentation.recorder import TrajectoryRecorder, estimate_tokens
 from instrumentation.repo_state import RepoChanges, measure_repo_changes
-from trajectory.schema import ActionType, StepRecord
+from trajectory.schema import ActionType, ProviderCallRecord, StepRecord
 
 MINI_SWE_AGENT_PINNED_VERSION = "2.4.6"
 
 
 class SpendCapExceeded(RuntimeError):
     """Raised when the programmatic hard spend cap is reached."""
-
-
-class CallCapExceeded(RuntimeError):
-    """Raised when the Phase 0.5 model-call ceiling is reached.
-
-    On a FREE TIER the dollar cap is the wrong instrument: litellm computes a
-    non-zero cost for `gemini/gemini-3.7-flash` from its paid-tier price map
-    ($0.75/$3.75 per 1M as of litellm 1.98.0), so a literal `cost_limit=0.00`
-    would abort at the first call. The binding, honest control for a $0
-    authorisation is therefore a hard ceiling on the NUMBER OF MODEL CALLS,
-    shared across the parent trajectory and every fork.
-    """
-
-
-@dataclass
-class CallBudget:
-    """Hard ceiling on total model calls across every session in a milestone."""
-
-    max_calls: int
-    used: int = 0
-
-    @property
-    def remaining(self) -> int:
-        return max(0, self.max_calls - self.used)
-
-    def check_and_reserve(self) -> None:
-        if self.used >= self.max_calls:
-            raise CallCapExceeded(
-                f"Phase 0.5 model-call ceiling reached: {self.used}/{self.max_calls} "
-                "calls used across all sessions; refusing further model calls"
-            )
-        self.used += 1
 
 
 @dataclass
@@ -88,8 +65,8 @@ class InstrumentationContext:
     #: Leave at 0.0 on a free tier and rely on `call_budget` instead (see
     #: CallCapExceeded for why a literal $0 cost cap is unusable).
     spend_cap_usd: float = 0.0
-    #: Shared model-call ledger. One object is passed to the parent run and to
-    #: every fork so the ceiling spans the whole Phase 0.5 milestone.
+    #: Shared physical API-attempt ledger. One object is passed to the parent
+    #: run and every fork so retries consume the same global ceiling.
     call_budget: "CallBudget | None" = None
     on_step: Any = None  # optional callback(StepRecord)
     steps: list[StepRecord] = field(default_factory=list)
@@ -128,8 +105,14 @@ class InstrumentedAgent(DefaultAgent):
                 f"cumulative cost {self.cost:.4f} USD reached the Phase 0.5 cap "
                 f"of {cap:.4f} USD; refusing further model calls"
             )
-        if self.instr.call_budget is not None:
-            self.instr.call_budget.check_and_reserve()
+        # Real provider models reserve inside the request layer so every
+        # physical retry is counted. Deterministic/test models have one physical
+        # attempt per logical query and are reserved here.
+        if (
+            self.instr.call_budget is not None
+            and not getattr(self.model, "accounts_physical_attempts", False)
+        ):
+            self.instr.call_budget.check_and_reserve("agent-nonprovider")
         t0 = time.monotonic()
         message = super().query()
         self._last_query_ms = (time.monotonic() - t0) * 1000.0
@@ -214,3 +197,64 @@ def agent_library_version() -> str:
     import importlib.metadata as md
 
     return md.version("mini-swe-agent")
+
+
+class Phase05GeminiModel(LitellmModel):
+    """mini-SWE-agent model with 503-only retry below trajectory semantics.
+
+    Upstream 2.4.6 retries nearly every non-auth exception. We override the
+    single physical request hook and make terminal wrappers abort upstream's
+    outer retry loop. Prompt preparation, action parsing, cost accounting, and
+    message construction remain the pinned upstream implementation.
+    """
+
+    accounts_physical_attempts = True
+    abort_exceptions = [
+        *LitellmModel.abort_exceptions,
+        ProviderUnavailable,
+        NonRetryableProviderError,
+        CallCapExceeded,
+    ]
+
+    def __init__(
+        self,
+        *,
+        call_budget: CallBudget,
+        provider_records: list[ProviderCallRecord] | None = None,
+        provider_sleep_fn=time.sleep,
+        provider_scope: str = "trajectory",
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
+        self.provider_executor = ProviderRequestExecutor(
+            call_budget=call_budget,
+            records=provider_records,
+            sleep_fn=provider_sleep_fn,
+            scope=provider_scope,
+        )
+        self._last_provider_record: ProviderCallRecord | None = None
+
+    def _query(self, messages: list[dict[str, str]], **kwargs):
+        # Disable LiteLLM's own retry mechanism. This executor is the sole retry
+        # owner, otherwise hidden SDK retries would evade physical accounting.
+        request_kwargs = {**kwargs, "num_retries": 0}
+        response, record = self.provider_executor.call(
+            lambda: super(Phase05GeminiModel, self)._query(messages, **request_kwargs)
+        )
+        self._last_provider_record = record
+        return response
+
+    def query(self, messages: list[dict[str, str]], **kwargs) -> dict:
+        try:
+            message = super().query(messages, **kwargs)
+        except FormatError as exc:
+            if self.provider_executor.records:
+                exc.messages[0].setdefault("extra", {})["provider"] = (
+                    self.provider_executor.records[-1].model_dump(mode="json")
+                )
+            raise
+        if self._last_provider_record is not None:
+            message.setdefault("extra", {})["provider"] = (
+                self._last_provider_record.model_dump(mode="json")
+            )
+        return message

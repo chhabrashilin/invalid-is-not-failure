@@ -1,0 +1,46 @@
+{
+  "kind": "phase0_5_availability_gate",
+  "model": "gemini/gemini-3.7-flash",
+  "fixed_prompt": "Reply with OK.",
+  "started_at": "2026-08-29T15:48:32.908688+00:00",
+  "stopped_at": "2026-08-29T16:01:28.215042+00:00",
+  "metrics": {
+    "logical_probes_attempted": 2,
+    "logical_probes_completed": 1,
+    "probes_eventually_successful": 0,
+    "physical_api_attempts": 7,
+    "first_attempt_success_rate": 0.0,
+    "eventual_success_rate": 0.0,
+    "provider_503_count": 6,
+    "provider_429_count": 0,
+    "other_error_types": {
+      "INTERRUPTED_IN_FLIGHT": 1
+    },
+    "median_successful_latency_ms": null,
+    "maximum_successful_latency_ms": null,
+    "global_physical_attempts_used": 12,
+    "global_physical_attempts_remaining": 88
+  },
+  "gate_decision": "STOP",
+  "phase0_5_decision": "MODIFY",
+  "reason": "provider availability insufficient for a valid real-agent checkpoint/fork test at this time",
+  "probe_summaries": [
+    {
+      "logical_probe_index": 0,
+      "provider_attempt_count": 4,
+      "provider_503_count": 4,
+      "provider_retry_delay_total": 105.0,
+      "provider_final_status": "PROVIDER_UNAVAILABLE"
+    },
+    {
+      "logical_probe_index": 1,
+      "provider_attempt_count": 3,
+      "provider_503_count": 2,
+      "provider_retry_delay_total": 45.0,
+      "provider_final_status": "INTERRUPTED_IN_FLIGHT",
+      "note": "The third physical request was interrupted after the preceding request took approximately 384.5 seconds to return another 503."
+    }
+  ],
+  "interpretation": "Infrastructure availability gate only; not a Gemini performance benchmark. The interrupted in-flight request is counted as a physical API attempt but not as a 503 because no provider response was received.",
+  "trajectory_launched": false
+}

@@ -25,7 +25,14 @@ import re
 from enum import Enum
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, NonNegativeFloat, NonNegativeInt
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    NonNegativeFloat,
+    NonNegativeInt,
+    model_validator,
+)
 
 # --------------------------------------------------------------------------
 # Oracle field registry -- used by tests to assert no leakage into online types
@@ -113,6 +120,20 @@ class TerminationReason(str, Enum):
     COST_LIMIT = "cost_limit"
     TIMEOUT = "timeout"
     CRASH = "crash"
+    PROVIDER_UNAVAILABLE = "PROVIDER_UNAVAILABLE"
+
+
+class ProviderFinalStatus(str, Enum):
+    """Operational result of one logical model call; never a behavioural label."""
+
+    SUCCESS = "SUCCESS"
+    PROVIDER_UNAVAILABLE = "PROVIDER_UNAVAILABLE"
+    RATE_LIMITED = "RATE_LIMITED"
+    AUTH_ERROR = "AUTH_ERROR"
+    BILLING_ERROR = "BILLING_ERROR"
+    INVALID_MODEL = "INVALID_MODEL"
+    OTHER_ERROR = "OTHER_ERROR"
+    CALL_CAP_EXCEEDED = "CALL_CAP_EXCEEDED"
 
 
 # --------------------------------------------------------------------------
@@ -258,6 +279,28 @@ class StepRecord(_OnlineSafe):
     model_latency_ms: NonNegativeFloat = 0.0
 
 
+class ProviderCallRecord(BaseModel):
+    """Separate provider-level provenance for one logical model call.
+
+    This record is intentionally not part of ``StepRecord``. A recovered 503
+    therefore cannot become a tool failure or enter Model B features.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    logical_call_index: NonNegativeInt
+    provider_attempt_count: NonNegativeInt
+    provider_503_count: NonNegativeInt
+    provider_retry_delay_total: NonNegativeFloat
+    provider_final_status: ProviderFinalStatus
+    started_ts: str
+    finished_ts: str
+    successful_latency_ms: NonNegativeFloat | None = None
+    total_latency_ms: NonNegativeFloat
+    status_code: int | None = None
+    error_type: str | None = None
+
+
 class EnvironmentSnapshotMetadata(_OnlineSafe):
     """Record of a checkpoint taken mid-trajectory (Stage 3 §7.2)."""
 
@@ -327,6 +370,24 @@ class SessionOutcome(_PostHoc):
     total_tool_calls: NonNegativeInt
     total_failed_tool_calls: NonNegativeInt
     estimated_cost_usd: NonNegativeFloat
+
+
+class ScientificRunDisposition(_PostHoc):
+    """Whether a retained run may receive a scientific success/failure label."""
+
+    session_id: str
+    termination_reason: TerminationReason
+    valid_for_success_modelling: bool
+    y_success: bool | None = None
+
+    @model_validator(mode="after")
+    def provider_outage_has_no_label(self) -> "ScientificRunDisposition":
+        if self.termination_reason == TerminationReason.PROVIDER_UNAVAILABLE:
+            if self.valid_for_success_modelling or self.y_success is not None:
+                raise ValueError(
+                    "PROVIDER_UNAVAILABLE is infrastructure-invalid and must have no Y_success"
+                )
+        return self
 
 
 # --------------------------------------------------------------------------
