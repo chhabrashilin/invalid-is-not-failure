@@ -239,3 +239,24 @@ def test_preflight_never_reads_credential_value():
     for forbidden in ('print(os.environ', 'os.environ[CREDENTIAL_ENV])',
                       'f"{os.environ'):
         assert forbidden not in src, f"preflight may leak the credential: {forbidden}"
+
+
+def test_preflight_user_scope_adoption_returns_name_not_value():
+    """Windows User-scope adoption must never return or leak the credential value."""
+    import importlib.util
+    from pathlib import Path
+
+    spec = importlib.util.spec_from_file_location(
+        "preflight_gemini2",
+        Path(__file__).resolve().parents[1] / "scripts/phase0/preflight_gemini.py",
+    )
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+
+    result = mod.load_windows_user_scope_env(("GEMINI_API_KEY",))
+    # Returns the NAME that was adopted, or None -- never the secret itself.
+    assert result in (None, "GEMINI_API_KEY")
+    src = (Path(__file__).resolve().parents[1]
+           / "scripts/phase0/preflight_gemini.py").read_text(encoding="utf-8")
+    assert "return name" in src, "adoption must return the name"
+    assert "return value" not in src, "adoption must never return the value"

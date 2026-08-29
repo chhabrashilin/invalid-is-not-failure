@@ -21,6 +21,7 @@ repository content, no environment, no file contents.
 from __future__ import annotations
 
 import os
+import time
 import sys
 from pathlib import Path
 
@@ -53,6 +54,42 @@ def load_agent_dotenv() -> str | None:
     return None
 
 
+def load_windows_user_scope_env(names: tuple[str, ...]) -> str | None:
+    """Adopt a persisted Windows *User*-scope variable into this process.
+
+    `setx` (and the System Properties GUI) write to `HKCU\\Environment`, but an
+    already-running process keeps the environment block it was born with. When
+    the harness was launched from a VS Code / explorer chain that predates the
+    `setx`, the value exists on the machine yet is invisible to every child
+    process -- which is exactly the failure this milestone kept hitting.
+
+    Reading the user's own persisted variable via the documented registry
+    location is the standard resolution. The VALUE is never printed, logged,
+    written to disk, or returned: only the NAME that was adopted is returned.
+    """
+    if os.name != "nt":
+        return None
+    try:
+        import winreg
+    except ImportError:  # pragma: no cover - non-Windows
+        return None
+    try:
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, "Environment") as key:
+            for name in names:
+                if os.environ.get(name):
+                    continue
+                try:
+                    value, _ = winreg.QueryValueEx(key, name)
+                except FileNotFoundError:
+                    continue
+                if value:
+                    os.environ[name] = value  # value never leaves this process
+                    return name
+    except OSError:
+        return None
+    return None
+
+
 MODEL = "gemini/gemini-3.7-flash"
 #: LiteLLM's documented env var for the Gemini Developer API (google AI Studio).
 CREDENTIAL_ENV = "GEMINI_API_KEY"
@@ -70,6 +107,12 @@ def main() -> int:
 
     loaded = load_agent_dotenv()
     print(f"[info] mini-swe-agent global .env: {loaded or 'not present'}")
+
+    adopted = load_windows_user_scope_env((CREDENTIAL_ENV, *ALT_ENV))
+    print(
+        f"[info] Windows User-scope adoption: "
+        f"{'adopted ' + adopted if adopted else 'nothing to adopt'}"
+    )
 
     # --- 1. credential presence (existence only; never the value) ----------
     present = [n for n in (CREDENTIAL_ENV, *ALT_ENV) if os.environ.get(n)]
@@ -122,30 +165,50 @@ def main() -> int:
         check("3_mini_swe_agent_model_built", False, repr(exc)[:300])
         return 4
 
-    # --- 4. minimal connectivity test: ONE call, 1 token -------------------
-    try:
-        resp = litellm.completion(
-            model=MODEL,
-            messages=[{"role": "user", "content": "hi"}],
-            max_tokens=1,
-        )
-        usage = getattr(resp, "usage", None)
-        detail = (
-            f"prompt_tokens={getattr(usage, 'prompt_tokens', '?')} "
-            f"completion_tokens={getattr(usage, 'completion_tokens', '?')}"
-        )
-        check("4_connectivity", True, detail)
-    except Exception as exc:
-        name = type(exc).__name__
-        check("4_connectivity", False, f"{name}: {str(exc)[:300]}")
-        if "RateLimit" in name or "429" in str(exc):
-            print("\nSTOP: rate limited / quota exhausted on the free tier.")
-            return 5
-        print("\nSTOP: connectivity failed. Do NOT substitute another model.")
-        return 6
-
-    print("\nPreflight OK. 1 model call consumed by the connectivity test.")
-    return 0
+    # --- 4. minimal connectivity test: 1 token, transient-503 tolerant -----
+    # Gemini returns 503 UNAVAILABLE ("experiencing high demand ... try again
+    # later") under load. That is a transient server-side condition, not an
+    # auth, billing or quota failure, so the probe retries the SAME model with
+    # backoff. A 429 is NOT retried -- that is a real quota signal and must
+    # surface immediately. No model is ever substituted.
+    calls = 0
+    last_err = ""
+    for attempt in range(1, 4):
+        try:
+            calls += 1
+            resp = litellm.completion(
+                model=MODEL,
+                messages=[{"role": "user", "content": "hi"}],
+                max_tokens=1,
+            )
+            usage = getattr(resp, "usage", None)
+            check(
+                "4_connectivity",
+                True,
+                f"attempt {attempt}/3 · prompt_tokens="
+                f"{getattr(usage, 'prompt_tokens', '?')} completion_tokens="
+                f"{getattr(usage, 'completion_tokens', '?')}",
+            )
+            print(f"\nPreflight OK. Model calls consumed by preflight: {calls}.")
+            return 0
+        except Exception as exc:
+            name, msg = type(exc).__name__, str(exc)
+            last_err = f"{name}: {msg[:240]}"
+            if "RateLimit" in name or "429" in msg:
+                check("4_connectivity", False, last_err)
+                print(f"\nSTOP: rate limited / quota exhausted. Calls used: {calls}.")
+                return 5
+            transient = "503" in msg or "UNAVAILABLE" in msg or "overloaded" in msg.lower()
+            if transient and attempt < 3:
+                wait = 15 * attempt
+                print(f"[info] attempt {attempt}/3 transient ({name}); retrying in {wait}s")
+                time.sleep(wait)
+                continue
+            check("4_connectivity", False, last_err)
+            print(f"\nSTOP: connectivity failed. Calls used: {calls}. "
+                  "Do NOT substitute another model.")
+            return 6
+    return 6
 
 
 if __name__ == "__main__":
