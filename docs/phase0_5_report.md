@@ -2,6 +2,11 @@
 
 Date: 2026-08-29. Branch `phase0.5-real-agent-validation` (from `a812835`).
 
+> **UPDATE (continuation from `ae1aefd`, Gemini free tier):** a credential was expected to be
+> available for the real-provider steps. It is **not reachable from this process** (see
+> §"Gemini free-tier continuation" at the end). Zero model calls were made; the decision
+> remains **MODIFY**.
+
 > **No scientific result.** No model trained, no AUROC, no recoverability, no
 > scheduler. Stage 3 falsification criteria are unchanged.
 
@@ -135,17 +140,21 @@ alongside the budget.
 
 ## Budget authorization
 
-**NOT GRANTED — and correctly so.** `docs/research_log.md` contains no
-`PHASE_0_5_API_BUDGET_USD` line, so no paid call was made. I have not written
-one: authorising spend is the user's decision, not mine, and there are no
+> **SUPERSEDED** by the Gemini free-tier continuation below. The paid-provider
+> recommendation in the previous two sections was the state as of `ae1aefd`; the
+> user has since directed a **$0.00 free-tier** run on
+> `gemini/gemini-3.7-flash` with a 100-call ceiling. Retained unedited as
+> provenance — see "Gemini free-tier continuation" for the authorisation
+> actually in force and for why the dollar cap was replaced by a call ceiling.
+
+*(As of `ae1aefd`)* **NOT GRANTED — and correctly so.** `docs/research_log.md`
+contained no `PHASE_0_5_API_BUDGET_USD` line, so no paid call was made. I did not
+write one: authorising spend is the user's decision, not mine, and there were no
 credentials to spend with regardless.
 
-**Recommended cap: `PHASE_0_5_API_BUDGET_USD = 2.00`.** Sized for 1 real
-trajectory (~75K tokens ≈ $0.02–0.08 at the rates above) + 1 checkpoint +
-2–3 continuations, with ~20× headroom for retries and a longer-than-expected
-trajectory. Two independent mechanisms already enforce it in code
-(`InstrumentationContext.spend_cap_usd` pre-call check, and upstream
-`config.cost_limit`), so the cap is programmatic, not attentional.
+**Recommended cap at the time: `PHASE_0_5_API_BUDGET_USD = 2.00`.** Sized for 1
+real trajectory (~75K tokens ≈ $0.02–0.08 at the rates above) + 1 checkpoint +
+2–3 continuations, with ~20× headroom.
 
 ## Selected SWE-bench instance
 
@@ -290,3 +299,100 @@ blockers are procurement and authorisation, not viability.
 5. **Decide the repo-measurement cadence** (issue 3) before it costs 80 s/session
    × 300 sessions.
 6. **Plan image storage/pruning** for ~200–400 GB across Phase 1.
+
+
+---
+
+# Gemini free-tier continuation (from `ae1aefd`)
+
+## 1. Verified model identifier
+
+`gemini/gemini-3.7-flash` — the `gemini/` prefix is required; without it litellm routes to
+Vertex AI and demands full GCP credentials.
+
+| check | result |
+|---|---|
+| Model documented on ai.google.dev | **Yes** — "latest and most capable Flash model"; banner "Gemini 3.7 Flash is now available" |
+| **Free-tier availability** | **NOT VERIFIABLE FROM DOCS** — the rate-limits page no longer publishes a static free-tier table (it defers to the per-account AI Studio dashboard), and `gemini-3.7-flash` appears in no rate-limit table there. Only Batch API Tier 1–3 tables are shown. **Confirm in your AI Studio dashboard.** |
+| LiteLLM env var | **`GEMINI_API_KEY`** (documented) |
+| LiteLLM resolution (offline) | `get_llm_provider("gemini/gemini-3.7-flash")` → `("gemini-3.7-flash", "gemini")`, litellm 1.98.0 |
+| mini-swe-agent 2.4.6 compatibility | `get_model()` resolves it; the Anthropic-only `set_cache_control` default correctly does not apply |
+
+## 2. API / free-tier connectivity status
+
+**BLOCKED — no credential reachable.** Checked without ever reading a value: process
+environment (bash + PowerShell), Windows **User** and **Machine** registry scopes, and
+`%LOCALAPPDATA%\mini-swe-agent\mini-swe-agent\.env`, `~/.config/mini-swe-agent/.env`,
+`resched/.env`, `research/.env`, `~/.env`. `GEMINI_API_KEY`, `GOOGLE_API_KEY`,
+`GOOGLE_GENAI_API_KEY` are absent from **all** of them.
+
+Most likely cause: the variable was set in a different terminal *after* this session's tool
+processes started. Env vars do not propagate into already-running processes.
+
+`scripts/phase0/preflight_gemini.py` executed and stopped at check 1 (exit code 2), **zero
+model calls made**. No substitute model was used, per the milestone rule.
+
+## 3–5. Trajectory, calls, cost
+
+| quantity | value |
+|---|---|
+| real trajectory | **not run** |
+| model calls | **0** |
+| prompt / completion tokens | 0 / 0 |
+| rate-limit errors | 0 (none attempted) |
+| **monetary cost** | **$0.00** |
+
+## 6–9. Feature audit, evaluator, checkpoint/restore, fork divergence
+
+**All blocked on the credential.** No real-data feature audit, no real checkpoint, no real
+forks, no divergence numbers.
+
+## 10. Preliminary K6 status
+
+**`K6_STATUS = UNTESTED`.** Unchanged. Reporting anything else from zero real continuations
+would be false.
+
+## 11. Free-tier quota / rate-limit issues
+
+None encountered — no request was attempted. Note the open item: free-tier eligibility for
+this specific model could not be confirmed from published documentation.
+
+## Free-tier budget enforcement — a finding that changed the mechanism
+
+**litellm carries a paid-tier price for `gemini/gemini-3.7-flash`**: `input_cost_per_token
+= 7.5e-07`, `output_cost_per_token = 3.75e-06` ($0.75 / $3.75 per 1M). So litellm computes a
+**non-zero cost even for free-tier calls**, and a literal `cost_limit = 0.00` would either
+abort at call #1 or read as "no cap" in our tightening logic.
+
+The $0 authorisation is therefore enforced as a **hard ceiling on model calls**, not dollars:
+
+- `CallBudget` / `CallCapExceeded` in `src/instrumentation/mini_swe_adapter.py`
+- one shared ledger passed to the parent run and every fork, so the ceiling spans the milestone
+- checked **before** each call inside the `query()` hook
+- 3 tests, including one asserting the ledger is shared across sessions and one documenting
+  why the dollar cap is unusable here
+
+`PHASE_0_5_MAX_MODEL_CALLS = 100`.
+
+## Data / privacy confirmation
+
+Phase 0.5 sends only the SWE-bench task statement and public repository content from the
+official instance image, agent-generated context, and benchmark commands and their output.
+It never sends API keys, personal files, unrelated environment contents, credentials, or
+private repository data. Safeguards already in the code: commands and outputs are stored as
+hashes plus bounded heads; environment variables are never captured; the preflight reads only
+the *existence* of the credential; the connectivity probe sends the literal string `"hi"`.
+
+## 12. Decision
+
+# MODIFY
+
+Two blockers, neither of which is a viability problem:
+
+1. **Credential not visible to this process.** Set `GEMINI_API_KEY` and start the harness from
+   that shell (or `setx` and restart the session). Never place it in a git-tracked file.
+2. **Free-tier eligibility for `gemini-3.7-flash` is undocumented publicly.** Confirm it in
+   the AI Studio rate-limit dashboard for this account before the run.
+
+Then `uv run --group agent python scripts/phase0/preflight_gemini.py` gates everything
+downstream.

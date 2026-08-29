@@ -42,6 +42,38 @@ class SpendCapExceeded(RuntimeError):
     """Raised when the programmatic hard spend cap is reached."""
 
 
+class CallCapExceeded(RuntimeError):
+    """Raised when the Phase 0.5 model-call ceiling is reached.
+
+    On a FREE TIER the dollar cap is the wrong instrument: litellm computes a
+    non-zero cost for `gemini/gemini-3.7-flash` from its paid-tier price map
+    ($0.75/$3.75 per 1M as of litellm 1.98.0), so a literal `cost_limit=0.00`
+    would abort at the first call. The binding, honest control for a $0
+    authorisation is therefore a hard ceiling on the NUMBER OF MODEL CALLS,
+    shared across the parent trajectory and every fork.
+    """
+
+
+@dataclass
+class CallBudget:
+    """Hard ceiling on total model calls across every session in a milestone."""
+
+    max_calls: int
+    used: int = 0
+
+    @property
+    def remaining(self) -> int:
+        return max(0, self.max_calls - self.used)
+
+    def check_and_reserve(self) -> None:
+        if self.used >= self.max_calls:
+            raise CallCapExceeded(
+                f"Phase 0.5 model-call ceiling reached: {self.used}/{self.max_calls} "
+                "calls used across all sessions; refusing further model calls"
+            )
+        self.used += 1
+
+
 @dataclass
 class InstrumentationContext:
     """Everything the adapter needs that upstream does not provide."""
@@ -53,7 +85,12 @@ class InstrumentationContext:
     exclude_paths: tuple[str, ...] = ()
     track_repo_changes: bool = True
     #: Hard USD ceiling. Enforced programmatically, never by human attention.
+    #: Leave at 0.0 on a free tier and rely on `call_budget` instead (see
+    #: CallCapExceeded for why a literal $0 cost cap is unusable).
     spend_cap_usd: float = 0.0
+    #: Shared model-call ledger. One object is passed to the parent run and to
+    #: every fork so the ceiling spans the whole Phase 0.5 milestone.
+    call_budget: "CallBudget | None" = None
     on_step: Any = None  # optional callback(StepRecord)
     steps: list[StepRecord] = field(default_factory=list)
 
@@ -91,6 +128,8 @@ class InstrumentedAgent(DefaultAgent):
                 f"cumulative cost {self.cost:.4f} USD reached the Phase 0.5 cap "
                 f"of {cap:.4f} USD; refusing further model calls"
             )
+        if self.instr.call_budget is not None:
+            self.instr.call_budget.check_and_reserve()
         t0 = time.monotonic()
         message = super().query()
         self._last_query_ms = (time.monotonic() - t0) * 1000.0

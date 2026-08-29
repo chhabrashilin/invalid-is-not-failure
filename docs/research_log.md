@@ -651,3 +651,114 @@ storage/pruning.
 **Commands:** `uv add --group agent "mini-swe-agent==2.4.6"` ·
 `uv run python scripts/phase0/select_phase05_instances.py` ·
 `MSWEA_SILENT_STARTUP=1 uv run --group agent --group dev pytest` (99 passed). No paid API calls.
+
+
+---
+
+## 2026-08-29 — Phase 0.5 (cont.): Gemini free-tier authorisation — **BLOCKED, MODIFY**
+
+**Stage:** 4B (Phase 0.5 continuation from `ae1aefd`). No Phase 1A, no scheduler, no
+predictors. Stage 3 falsification criteria unchanged.
+
+### Authorisation recorded (as instructed by the user)
+
+```
+PHASE_0_5_API_BUDGET_USD   = 0.00
+PHASE_0_5_PROVIDER         = Google Gemini Developer API free tier
+PHASE_0_5_MODEL            = gemini/gemini-3.7-flash
+PHASE_0_5_MAX_MODEL_CALLS  = 100
+```
+
+Meaning, per the user: no paid tier, no automatic billing upgrade, no paid fallback, no
+substitute provider — and **not** unlimited usage. The 100-call ceiling spans the parent
+trajectory and every fork.
+
+### Actual usage this session
+
+| quantity | value |
+|---|---|
+| model calls | **0** |
+| prompt tokens | 0 |
+| completion tokens | 0 |
+| rate-limit errors | 0 (none possible — no call was attempted) |
+| monetary cost | **$0.00** |
+
+### BLOCKER: the credential is not reachable from this process
+
+Checked without ever reading a value: the process environment (bash and PowerShell), the
+Windows **User** and **Machine** registry scopes, and every standard config location
+(`%LOCALAPPDATA%\mini-swe-agent\mini-swe-agent\.env`, `~/.config/mini-swe-agent/.env`,
+`resched/.env`, `research/.env`, `~/.env`). `GEMINI_API_KEY`, `GOOGLE_API_KEY` and
+`GOOGLE_GENAI_API_KEY` are **absent from all of them**.
+
+Most likely cause: the variable was set in a different terminal *after* this session's tool
+processes started. Environment variables do not propagate into already-running processes, so
+the harness must be launched from a shell where the variable is already set (or the variable
+persisted with `setx` and the session restarted).
+
+Per the milestone rule — *"If the model identifier or integration is incompatible: STOP and
+report. Do NOT silently substitute another model."* — no substitution was made and no call was
+attempted.
+
+### Verifications completed (all except the two that require the credential)
+
+1. **Model exists.** `gemini-3.7-flash` is documented on ai.google.dev as the "latest and most
+   capable Flash model"; the rate-limits page carries a banner "Gemini 3.7 Flash is now
+   available".
+2. **Free-tier availability: NOT VERIFIABLE FROM DOCUMENTATION.** ai.google.dev/gemini-api/docs/
+   rate-limits no longer publishes a static free-tier table — it defers to the per-account AI
+   Studio dashboard, and `gemini-3.7-flash` appears in no rate-limit table on that page. The
+   only tiered tables shown are Batch API Tier 1–3. **This must be confirmed in the user's own
+   AI Studio rate-limit dashboard before the run.** Recorded as an open item rather than
+   assumed.
+3. **LiteLLM env var = `GEMINI_API_KEY`** (documented); model string is the `gemini/` prefix
+   form. Without that prefix litellm routes to Vertex AI and would demand full GCP credentials.
+4. **Identifier resolves offline:** litellm 1.98.0 `get_llm_provider("gemini/gemini-3.7-flash")`
+   → `("gemini-3.7-flash", "gemini")`.
+5. **mini-swe-agent compatibility:** `minisweagent.models.get_model()` resolves the string; the
+   Anthropic-only `set_cache_control` default is correctly not applied to a Gemini model.
+6. **Connectivity test:** implemented and executed; it stopped at check 1 (no credential),
+   exit code 2, with zero calls made.
+
+### Operational finding that changes how the $0 budget is enforced
+
+**litellm carries a paid-tier price for this model** — `input_cost_per_token = 7.5e-07`,
+`output_cost_per_token = 3.75e-06` ($0.75 / $3.75 per 1M). Consequently litellm computes a
+**non-zero cost even for free-tier calls**, and a literal `cost_limit = 0.00` fed to
+mini-swe-agent would either abort at call #1 or (in our tightening logic) be indistinguishable
+from "no cap".
+
+Therefore the $0 authorisation is enforced as a **hard ceiling on the number of model calls**,
+not as a dollar cap: new `CallBudget` / `CallCapExceeded` in `mini_swe_adapter.py`, a single
+shared ledger passed to the parent run and every fork, checked *before* each call in the
+`query()` hook. Three tests cover it, including one asserting the ledger is shared across
+sessions and one documenting why the dollar cap is unusable here. The reported dollar cost
+will be taken as $0.00 on the free tier, with litellm's computed figure recorded separately as
+a paid-tier-equivalent reference only.
+
+### Data / privacy confirmation
+
+Phase 0.5 sends only: the SWE-bench task statement and public repository content from the
+official instance image, agent-generated context, and benchmark commands plus their output.
+It never sends API keys, personal files, unrelated environment contents, credentials, or
+private repository data. Structural safeguards already in place: commands and outputs are
+stored as hashes plus bounded heads; environment variables are never captured; the preflight
+script reads only the *existence* of the credential, never its value; and the connectivity
+test sends the literal string "hi" and nothing else.
+
+### Not done (blocked on the credential)
+
+Real trajectory, Model-B feature audit on real data, independent evaluation of a real run,
+real checkpoint, real restore, ≥2 same-condition Gemini continuations, divergence measurement.
+**K6_STATUS remains UNTESTED.**
+
+### Decision: MODIFY
+
+Blockers: (1) make `GEMINI_API_KEY` visible to the session running the harness — set it, then
+start the harness from that shell; (2) confirm in the AI Studio dashboard that
+`gemini-3.7-flash` is served on the free tier for this account, since Google no longer
+documents that statically. Then re-run `scripts/phase0/preflight_gemini.py`; it gates
+everything downstream.
+
+**Commands:** `uv run --group agent python scripts/phase0/preflight_gemini.py` (exit 2, zero
+calls) · `MSWEA_SILENT_STARTUP=1 uv run --group agent --group dev pytest` (103 passed).

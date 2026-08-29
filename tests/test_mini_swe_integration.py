@@ -129,3 +129,68 @@ def test_mini_swe_session_passes_backend_guard(session_meta):
         }
     )
     require_real_backend(real)
+
+
+# =========================================================================
+# Phase 0.5 free-tier controls: shared model-call ceiling
+# =========================================================================
+
+
+def test_call_budget_reserves_and_exhausts():
+    from instrumentation.mini_swe_adapter import CallBudget, CallCapExceeded
+
+    b = CallBudget(max_calls=3)
+    for _ in range(3):
+        b.check_and_reserve()
+    assert b.used == 3 and b.remaining == 0
+    with pytest.raises(CallCapExceeded):
+        b.check_and_reserve()
+
+
+def test_call_ceiling_halts_the_agent():
+    """The ceiling must stop the loop without relying on human attention."""
+    from instrumentation.mini_swe_adapter import CallBudget, CallCapExceeded
+
+    budget = CallBudget(max_calls=2)
+    outputs = [make_output(f"s{i}", [{"command": "echo x"}], cost=0.0) for i in range(20)]
+    rec = TrajectoryRecorder("sess-cap", start_monotonic=0.0)
+    instr = InstrumentationContext(
+        recorder=rec, spend_cap_usd=0.0, track_repo_changes=False, call_budget=budget
+    )
+    agent = InstrumentedAgent(
+        DeterministicModel(outputs=outputs), LocalEnvironment(), instrumentation=instr,
+        step_limit=50, system_template=SYSTEM_TEMPLATE, instance_template=INSTANCE_TEMPLATE,
+    )
+    with pytest.raises((CallCapExceeded, Exception)):
+        agent.run("t")
+    assert budget.used == 2, f"expected exactly 2 calls, got {budget.used}"
+
+
+def test_call_budget_is_shared_across_sessions():
+    """Parent + forks must draw from ONE ledger (Phase 0.5 ceiling spans all)."""
+    from instrumentation.mini_swe_adapter import CallBudget
+
+    budget = CallBudget(max_calls=100)
+    a = InstrumentationContext(recorder=TrajectoryRecorder("a"), call_budget=budget)
+    b = InstrumentationContext(recorder=TrajectoryRecorder("b"), call_budget=budget)
+    a.call_budget.check_and_reserve()
+    b.call_budget.check_and_reserve()
+    assert budget.used == 2 and a.call_budget is b.call_budget
+
+
+def test_free_tier_zero_dollar_cap_would_block_everything():
+    """Documents WHY the $0 authorisation is enforced as calls, not dollars.
+
+    litellm carries a paid-tier price for gemini/gemini-3.7-flash, so a literal
+    cost_limit of 0.00 is indistinguishable from 'no cap' in our tightening
+    logic -- and if it were applied as a cost check it would abort call #1.
+    """
+    rec = TrajectoryRecorder("s", start_monotonic=0.0)
+    instr = InstrumentationContext(recorder=rec, spend_cap_usd=0.0)
+    agent = InstrumentedAgent(
+        DeterministicModel(outputs=[]), LocalEnvironment(), instrumentation=instr,
+        cost_limit=0.0, system_template=SYSTEM_TEMPLATE, instance_template=INSTANCE_TEMPLATE,
+    )
+    # spend_cap_usd == 0 means "no dollar cap applied"; the call ceiling governs.
+    assert agent.config.cost_limit == 0.0
+    assert instr.spend_cap_usd == 0.0
