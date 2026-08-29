@@ -63,9 +63,12 @@ def extract_model_b_features(prefix: TrajectoryPrefix) -> dict[str, float]:
             "b_max_error_repeat": 0.0,
             "b_distinct_error_categories": 0.0,
             "b_test_invocations": 0.0,
+            "b_test_runs_parsed": 0.0,
+            "b_test_runs_unparseable": 0.0,
             "b_last_tests_failed": 0.0,
-            "b_files_changed_total": 0.0,
-            "b_diff_lines_total": 0.0,
+            "b_repo_files_changed": 0.0,
+            "b_repo_lines_added": 0.0,
+            "b_repo_lines_deleted": 0.0,
             "b_consecutive_failures": 0.0,
         }
 
@@ -74,9 +77,12 @@ def extract_model_b_features(prefix: TrajectoryPrefix) -> dict[str, float]:
     failed = 0
     tool_calls = 0
     test_invocations = 0
+    test_parsed = 0
+    test_unparseable = 0
     last_tests_failed = 0.0
-    files_changed = 0
-    diff_lines = 0
+    repo_files_changed = 0
+    repo_lines_added = 0
+    repo_lines_deleted = 0
     consecutive_failures = 0
     running_consecutive = 0
 
@@ -93,10 +99,20 @@ def extract_model_b_features(prefix: TrajectoryPrefix) -> dict[str, float]:
             running_consecutive = 0
         if step.test_invocation:
             test_invocations += 1
-            if step.tests_failed is not None:
-                last_tests_failed = float(step.tests_failed)
-        files_changed += step.files_changed_count
-        diff_lines += step.diff_line_count
+            if step.test_status == "TEST_RAN_RESULT_PARSED":
+                test_parsed += 1
+                if step.tests_failed is not None:
+                    last_tests_failed = float(step.tests_failed)
+            elif step.test_status == "TEST_RAN_RESULT_UNPARSEABLE":
+                test_unparseable += 1
+        # D1: repository-scoped counts are cumulative snapshots, so take the
+        # latest measured value rather than summing per-step deltas.
+        if step.repo_changes_measured:
+            repo_files_changed = (
+                step.repo_files_modified + step.repo_files_added + step.repo_files_deleted
+            )
+            repo_lines_added = step.repo_lines_added
+            repo_lines_deleted = step.repo_lines_deleted
 
     distinct_cmds = len(cmd_counter)
     max_repeat = max(cmd_counter.values()) if cmd_counter else 0
@@ -116,9 +132,12 @@ def extract_model_b_features(prefix: TrajectoryPrefix) -> dict[str, float]:
         "b_max_error_repeat": float(max_err_repeat),
         "b_distinct_error_categories": float(len(err_counter)),
         "b_test_invocations": float(test_invocations),
+        "b_test_runs_parsed": float(test_parsed),
+        "b_test_runs_unparseable": float(test_unparseable),
         "b_last_tests_failed": last_tests_failed,
-        "b_files_changed_total": float(files_changed),
-        "b_diff_lines_total": float(diff_lines),
+        "b_repo_files_changed": float(repo_files_changed),
+        "b_repo_lines_added": float(repo_lines_added),
+        "b_repo_lines_deleted": float(repo_lines_deleted),
         "b_consecutive_failures": float(consecutive_failures),
     }
 

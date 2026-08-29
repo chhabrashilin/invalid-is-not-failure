@@ -15,9 +15,10 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
-from checkpoint.docker_env import container_diff_summary, exec_command
-from evaluation.evaluator import parse_pytest_output
+from checkpoint.docker_env import exec_command
+from evaluation.test_detect import detect_and_parse
 from instrumentation.recorder import TrajectoryRecorder, estimate_tokens
+from instrumentation.repo_state import measure_repo_changes
 from trajectory.schema import ActionType, StepRecord
 
 
@@ -35,13 +36,7 @@ class LoopState:
     """Mutable loop state, kept explicit rather than in globals (Phase 0 Step 9)."""
 
     messages: list[dict] = field(default_factory=list)
-    prev_diff_count: int = 0
     submitted: bool = False
-
-
-def _looks_like_test_command(command: str) -> bool:
-    lowered = command.lower()
-    return "pytest" in lowered or "python -m unittest" in lowered or " test" in lowered
 
 
 def run_steps(
@@ -52,7 +47,10 @@ def run_steps(
     state: LoopState,
     max_steps: int,
     exec_timeout: float = 300.0,
-    track_fs_diff: bool = True,
+    workdir: str = "/testbed",
+    base_commit: str | None = None,
+    exclude_paths: tuple[str, ...] = (),
+    track_repo_changes: bool = True,
 ) -> list[StepRecord]:
     """Run up to `max_steps` agent steps, recording each one.
 
@@ -87,16 +85,19 @@ def run_steps(
         observation = f"exit={result.exit_status}\n{result.stdout[-4000:]}"
         state.messages.append({"role": "user", "content": observation})
 
-        files_changed = 0
-        if track_fs_diff:
-            current = container_diff_summary(container_id)
-            files_changed = max(0, current - state.prev_diff_count)
-            state.prev_diff_count = current
+        # D1: repository-scoped change measurement, taken BEFORE the evaluator
+        # ever applies test_patch, and excluding the instance test files so the
+        # evaluator's own edits can never be attributed to the agent.
+        repo_changes = None
+        if track_repo_changes and base_commit:
+            repo_changes = measure_repo_changes(
+                container_id, workdir, base_commit, exclude_paths=exclude_paths
+            )
 
-        parsed = (
-            parse_pytest_output(result.stdout + "\n" + result.stderr)
-            if _looks_like_test_command(response.command)
-            else None
+        # D3: structural test detection with three-valued status. An unparseable
+        # test run is recorded as an invocation, never as "no test ran".
+        test_outcome = detect_and_parse(
+            response.command, result.stdout, result.stderr, result.exit_status
         )
 
         context_text = "".join(m["content"] for m in state.messages)
@@ -109,14 +110,9 @@ def run_steps(
             stdout=result.stdout,
             stderr=result.stderr,
             exit_status=result.exit_status,
-            model_latency_ms=0.0,  # mocked LM: no real inference latency to report
-            files_changed_count=files_changed,
-            tests_passed=parsed.passed if parsed else None,
-            tests_failed=(
-                ((parsed.failed or 0) + (parsed.errors or 0))
-                if parsed and parsed.any_parsed
-                else None
-            ),
+            model_latency_ms=getattr(response, "latency_ms", 0.0),
+            test_outcome=test_outcome,
+            repo_changes=repo_changes,
         )
         produced.append(step)
 

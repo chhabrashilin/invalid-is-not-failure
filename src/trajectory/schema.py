@@ -23,7 +23,7 @@ from __future__ import annotations
 import hashlib
 import re
 from enum import Enum
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, NonNegativeFloat, NonNegativeInt
 
@@ -49,6 +49,11 @@ ORACLE_FIELD_NAMES: frozenset[str] = frozenset(
         "outcome",
     }
 )
+
+
+TestStatusLiteral = Literal[
+    "TEST_NOT_RUN", "TEST_RAN_RESULT_PARSED", "TEST_RAN_RESULT_UNPARSEABLE"
+]
 
 
 class _OnlineSafe(BaseModel):
@@ -89,6 +94,17 @@ class ErrorCategory(str, Enum):
     TEST_FAILURE = "test_failure"
     TIMEOUT = "timeout"
     NONZERO_EXIT = "nonzero_exit"
+
+
+class ExecutionBackend(str, Enum):
+    """Which agent implementation produced the trajectory (Phase 0.5 D4).
+
+    Phase 1 scientific collection MUST reject MOCK. Enforced by
+    `require_real_backend`.
+    """
+
+    MOCK = "mock"
+    MINI_SWE_AGENT = "mini_swe_agent"
 
 
 class TerminationReason(str, Enum):
@@ -161,6 +177,8 @@ class SessionMeta(_OnlineSafe):
     repo: str | None = None
     scaffold: str
     scaffold_version: str
+    execution_backend: ExecutionBackend = ExecutionBackend.MOCK
+    agent_library_version: str | None = None
     model_id: str
     decoding_params: dict[str, Any] = Field(default_factory=dict)
     seed: int | None = None
@@ -217,11 +235,26 @@ class StepRecord(_OnlineSafe):
     # derived behavioural features (Stage 3 §4.2)
     repeated_command_k: NonNegativeInt = 0
     repeated_error_k: NonNegativeInt = 0
+    # --- test detection (D3): three-valued, never collapse UNPARSEABLE to NOT_RUN
+    test_status: TestStatusLiteral = "TEST_NOT_RUN"
+    test_framework: str = "none"
+    test_exit_status: int | None = None
     test_invocation: bool = False
     tests_passed: int | None = None
     tests_failed: int | None = None
-    files_changed_count: NonNegativeInt = 0
-    diff_line_count: NonNegativeInt = 0
+    tests_errored: int | None = None
+
+    # --- repository-scoped change accounting (D1), measured via git inside the
+    # repo BEFORE the evaluator applies test_patch. `repo_changes_measured`
+    # records whether the measurement actually succeeded, so a failed
+    # measurement is never silently read as "zero changes".
+    repo_files_modified: NonNegativeInt = 0
+    repo_files_added: NonNegativeInt = 0
+    repo_files_deleted: NonNegativeInt = 0
+    repo_lines_added: NonNegativeInt = 0
+    repo_lines_deleted: NonNegativeInt = 0
+    repo_changes_measured: bool = False
+
     model_latency_ms: NonNegativeFloat = 0.0
 
 
@@ -354,3 +387,25 @@ class TrajectoryPrefix:
 
     def __repr__(self) -> str:
         return f"TrajectoryPrefix(session={self._session.session_id!r}, k={self._k})"
+
+
+class MockBackendRejected(RuntimeError):
+    """Raised when a mock trajectory is offered to scientific collection."""
+
+
+def require_real_backend(session: SessionMeta) -> None:
+    """Reject mock trajectories (Phase 0.5 D4).
+
+    Phase 1 must never mix deterministic mock runs into a scientific dataset.
+    Call this at load time in any Phase 1 pipeline.
+    """
+    if session.execution_backend != ExecutionBackend.MINI_SWE_AGENT:
+        raise MockBackendRejected(
+            f"session {session.session_id} used backend "
+            f"'{session.execution_backend.value}'; Phase 1 requires "
+            f"'{ExecutionBackend.MINI_SWE_AGENT.value}'"
+        )
+    if session.model_id.startswith("mock:"):
+        raise MockBackendRejected(
+            f"session {session.session_id} has mock model_id {session.model_id!r}"
+        )

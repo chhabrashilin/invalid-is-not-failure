@@ -1,0 +1,26 @@
+{
+  "dataset": "princeton-nlp/SWE-bench_Verified",
+  "project_seed": "resched-phase0.5-2026",
+  "selection_rule": "sort instance_ids by sha256(PROJECT_SEED + '|' + instance_id), ascending; take the first three",
+  "rule_declared_before_execution": true,
+  "n_instances_seen": 500,
+  "candidates": [
+    {
+      "rank": 1,
+      "instance_id": "matplotlib__matplotlib-23412",
+      "sort_key": "0007ce7baf698dfe"
+    },
+    {
+      "rank": 2,
+      "instance_id": "django__django-14765",
+      "sort_key": "00142349ca1f174d"
+    },
+    {
+      "rank": 3,
+      "instance_id": "astropy__astropy-14096",
+      "sort_key": "013b778d12252f7b"
+    }
+  ],
+  "run_policy": "Run candidate #1 only. Fall through to #2/#3 ONLY on infrastructure failure (image unavailable, container will not start). A failed task is a valid outcome and must not trigger a switch.",
+  "selected_at": "2026-08-29T13:12:42.974122+00:00"
+}

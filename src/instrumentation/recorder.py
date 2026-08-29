@@ -15,6 +15,8 @@ import time
 from collections import Counter
 from datetime import datetime, timezone
 
+from evaluation.test_detect import TestOutcome, TestStatus
+from instrumentation.repo_state import RepoChanges
 from trajectory.schema import (
     ActionType,
     ErrorCategory,
@@ -88,10 +90,8 @@ class TrajectoryRecorder:
         exit_status: int | None = None,
         model_latency_ms: float = 0.0,
         estimated_cost_usd: float = 0.0,
-        files_changed_count: int = 0,
-        diff_line_count: int = 0,
-        tests_passed: int | None = None,
-        tests_failed: int | None = None,
+        test_outcome: TestOutcome | None = None,
+        repo_changes: RepoChanges | None = None,
         elapsed_s: float | None = None,
     ) -> StepRecord:
         """Record one completed step and return the immutable record."""
@@ -119,7 +119,10 @@ class TrajectoryRecorder:
         if action_type == ActionType.BASH:
             self._cum_tool_calls += 1
 
-        test_invocation = tests_passed is not None or tests_failed is not None
+        # D3: three-valued test detection. An unparseable test run is recorded
+        # as an invocation, NOT as "no test ran".
+        to = test_outcome
+        rc = repo_changes
 
         step = StepRecord(
             step_id=self._step_id,
@@ -149,11 +152,19 @@ class TrajectoryRecorder:
             error_category=error_category,
             repeated_command_k=repeated_command_k,
             repeated_error_k=repeated_error_k,
-            test_invocation=test_invocation,
-            tests_passed=tests_passed,
-            tests_failed=tests_failed,
-            files_changed_count=files_changed_count,
-            diff_line_count=diff_line_count,
+            test_status=(to.status.value if to else TestStatus.NOT_RUN.value),
+            test_framework=(to.framework.value if to else "none"),
+            test_exit_status=(to.exit_status if to else None),
+            test_invocation=bool(to and to.invoked),
+            tests_passed=(to.passed if to else None),
+            tests_failed=(to.failed if to else None),
+            tests_errored=(to.errored if to else None),
+            repo_files_modified=(rc.files_modified if rc else 0),
+            repo_files_added=(rc.files_added if rc else 0),
+            repo_files_deleted=(rc.files_deleted if rc else 0),
+            repo_lines_added=(rc.lines_added if rc else 0),
+            repo_lines_deleted=(rc.lines_deleted if rc else 0),
+            repo_changes_measured=bool(rc and rc.measured),
             model_latency_ms=model_latency_ms,
         )
         self.steps.append(step)

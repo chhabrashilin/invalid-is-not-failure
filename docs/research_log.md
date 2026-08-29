@@ -553,3 +553,101 @@ plan — cloud VM or multi-day local runs; (6) verify RAM headroom beyond ~2 con
 `uv sync --group dev` · `uv run python scripts/phase0/select_instance.py` ·
 `docker pull swebench/sweb.eval.x86_64.astropy_1776_astropy-12907:latest` · `uv run pytest` ·
 `uv run python scripts/phase0/run_phase0.py --config configs/phase0/smoke.yaml`
+
+
+---
+
+## 2026-08-29 — Stage 4B / Phase 0.5: real-agent measurement pipeline — **MODIFY**
+
+**Stage:** 4B (Phase 0.5). Branch `phase0.5-real-agent-validation` from `a812835`.
+No scheduler, no model training, no Phase 1, no scientific claim. Stage 3 falsification
+criteria unchanged.
+
+### Cost authorisation — deliberately NOT written
+
+There is **no `PHASE_0_5_API_BUDGET_USD` line in this log**, so no paid API call was made.
+I did not add one: authorising spend is the user's decision, not mine.
+
+**Recommended cap when the user decides: `PHASE_0_5_API_BUDGET_USD = 2.00`** — sized for one
+real trajectory (~75K tokens, $0.02–0.08 at DeepSeek-V4-Flash/Codestral rates), one checkpoint
+and 2–3 continuations, with ~20x headroom. Two independent programmatic enforcement points
+already exist (`InstrumentationContext.spend_cap_usd` pre-call check; upstream
+`config.cost_limit`, which the adapter tightens but never loosens).
+
+### The blocking discovery
+
+**No LLM API credentials exist anywhere on this machine, and no local inference runtime.**
+No `OPENAI_*`/`ANTHROPIC_*`/`GEMINI_*`/`DEEPSEEK_*`/`OPENROUTER_*`/... env vars; no
+`~/.config/litellm`, `~/.mini-swe-agent`, or `.env`; no `ollama`/`llama-server`/`lms`/`vllm`
+binary; nothing on `localhost:11434`. **Phase 0.5 Steps 9–12 (real agent run, real checkpoint,
+real control forks, K6) are therefore not executable here at all** — independently of budget.
+
+### Defect status
+
+| | Defect | Status |
+|---|---|---|
+| D1 | `docker diff` counted conda/pytest churn (537 "files changed") | **FIXED + TESTED** — `src/instrumentation/repo_state.py`, git-scoped to the repo, with a `measured` flag so a failed measurement is not read as zero |
+| D2 | pipeline masked failing exit status | **FIXED + TESTED LIVE** — `set -o pipefail`; in-container proof: `false \| tail -5` → exit 1 with pipefail, exit 0 without |
+| D3 | brittle test detection | **FIXED + TESTED** — structural argv classification over 10 frameworks; three-valued status where UNPARSEABLE is never collapsed into NOT_RUN |
+| D4 | mirror loop, not mini-SWE-agent | **FIXED** — mini-swe-agent 2.4.6 installed; adapter overrides only the two documented hooks; `require_real_backend()` quarantines mock runs |
+| D5 | real-provider fork divergence | **NOT CLOSED — blocked on credentials.** `K6_STATUS = UNTESTED` |
+| D6 | local throughput unknown | **BOUNDED, not closed** — measured below |
+
+### Contamination rule (D1)
+
+Agent-change accounting runs **before** the evaluator applies `test_patch`, **and** the
+instance test files are passed as `exclude_paths`. Two independent defences, because
+attributing the evaluator's own edits to the agent would silently corrupt every repo-change
+feature. Tested by `test_d1_test_patch_can_never_be_attributed_to_the_agent`.
+
+### mini-SWE-agent integration approach
+
+Not a fork. Upstream `DefaultAgent.query()` is documented *"Override to add hooks"*; the adapter
+subclasses it and overrides `query()` and `execute_actions()` only. Prompt templates, action
+parsing, `FormatError` handling, the `run()` loop and message construction remain upstream. A
+test asserts the upstream hook docstring still exists so an upstream API change breaks the build
+rather than the measurements. Validated with upstream's own `DeterministicModel` +
+`LocalEnvironment` — the real agent class runs under instrumentation, `exit 3` is captured
+correctly, and the spend cap halts the loop — all at $0.
+
+### Instance selection (pre-declared, committed seed)
+
+`sort by sha256("resched-phase0.5-2026|" + instance_id)`, take first 3 of 500 →
+**#1 `matplotlib__matplotlib-23412`**, #2 `django__django-14765`, #3 `astropy__astropy-14096`.
+Fall through to #2/#3 only on infrastructure failure; a failed task is a valid outcome.
+
+### Measured local performance (D6)
+
+container start 0.62s · trivial exec 0.83s · `git status` 0.97s · pytest(2 tests) 6.95s ·
+**`docker commit` 68.0s** · restore 0.89s · cleanup 1.56s. Docker holds 24.45GB images +
+16.87GB build cache.
+
+`docker commit` at 68s is the binding constraint and confirms the Stage 3 warning
+(arXiv:2510.05556) that container commits are too slow; Shepherd (arXiv:2605.10913) reports
+157–252ms overlay checkpoints. Phase 1 estimate: **300 sessions ≈ 50–125h sequential (2–5 days)**,
+~5.7h of checkpointing, $3–30 API, and **~200–400GB of instance images** (fits in 687GB free only
+with batching by image plus pruning). Local execution is feasible but slow; no cloud
+infrastructure was provisioned.
+
+### New methodological issues
+
+(a) per-step `git status` adds ~1s/step ≈ 80s/session of pure instrumentation overhead — Phase 1
+should consider measuring every *k* steps or only after write-plausible commands; (b) renames are
+counted once as a modification, documented and tested rather than accidental; (c) upstream
+`AgentConfig` requires `system_template`/`instance_template`, so any Phase 1 runner must supply
+them.
+
+### Decision: MODIFY
+
+Not PASS — the PASS criteria require a real trajectory, real checkpoint and ≥2 real forks, none of
+which are possible without credentials. Not FAIL — nothing found suggests the architecture cannot
+support the design; the blockers are procurement and authorisation, not viability.
+
+**Blockers before Phase 1:** (1) provide credentials or a local runtime; (2) write the budget line
+and confirm the model; (3) re-run Steps 9–12 on `matplotlib__matplotlib-23412`; (4) complete the
+online-feature audit on that real trajectory; (5) decide repo-measurement cadence; (6) plan image
+storage/pruning.
+
+**Commands:** `uv add --group agent "mini-swe-agent==2.4.6"` ·
+`uv run python scripts/phase0/select_phase05_instances.py` ·
+`MSWEA_SILENT_STARTUP=1 uv run --group agent --group dev pytest` (99 passed). No paid API calls.

@@ -15,6 +15,9 @@ dependencies = [
 ]
 
 [dependency-groups]
+agent = [
+    "mini-swe-agent==2.4.6",
+]
 dev = [
     "pytest>=7.4",
     "pytest-cov>=4.1",

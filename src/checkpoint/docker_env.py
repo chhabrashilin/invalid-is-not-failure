@@ -81,12 +81,27 @@ def start_container(image: str, name: str | None = None, workdir: str | None = N
     return proc.stdout.strip()
 
 
-def exec_command(container_id: str, command: str, timeout: float = 300.0) -> ExecResult:
-    """Run a bash command inside the container, capturing exit status and streams."""
+#: Prefix applied to every agent command (Phase 0.5 defect D2).
+#: Without `pipefail`, `pytest ... | tail -5` reports tail's status (0) and a
+#: FAILING test run is recorded as a success. Real agents pipe constantly, so
+#: this silently biases every failure-rate feature toward zero.
+PIPEFAIL_PREFIX = "set -o pipefail; "
+
+
+def exec_command(
+    container_id: str, command: str, timeout: float = 300.0, pipefail: bool = True
+) -> ExecResult:
+    """Run a bash command inside the container, capturing exit status and streams.
+
+    Args:
+        pipefail: when True (default) the command runs under `set -o pipefail`
+            so the status of the leftmost failing pipeline stage is preserved.
+    """
     t0 = time.monotonic()
+    wrapped = (PIPEFAIL_PREFIX + command) if pipefail else command
     try:
         proc = _run(
-            ["docker", "exec", container_id, "bash", "-lc", command], timeout=timeout
+            ["docker", "exec", container_id, "bash", "-lc", wrapped], timeout=timeout
         )
     except DockerError:
         return ExecResult(None, "", "timeout", (time.monotonic() - t0) * 1000.0)

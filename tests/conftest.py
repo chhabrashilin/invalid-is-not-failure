@@ -9,7 +9,9 @@ from __future__ import annotations
 
 import pytest
 
+from evaluation.test_detect import detect_and_parse
 from instrumentation.recorder import TrajectoryRecorder
+from instrumentation.repo_state import RepoChanges
 from trajectory.schema import (
     ActionType,
     SessionMeta,
@@ -19,7 +21,7 @@ from trajectory.schema import (
 )
 
 FIXTURE_STEPS = [
-    # (command, stdout, stderr, exit_status, tests_passed, tests_failed)
+    # (command, stdout, stderr, exit_status, _, _)
     ("ls -la", "total 8\nsrc\n", "", 0, None, None),
     ("python -c \"open('f.py','w').write('x=1')\"", "", "", 0, None, None),
     ("pytest -q", "1 failed, 2 passed", "", 1, 2, 1),
@@ -60,9 +62,12 @@ def fixture_recorder() -> TrajectoryRecorder:
             stdout=out,
             stderr=err,
             exit_status=code,
-            tests_passed=tp,
-            tests_failed=tf,
-            files_changed_count=1 if "open(" in cmd else 0,
+            test_outcome=detect_and_parse(cmd, out, err, code),
+            repo_changes=RepoChanges(
+                files_modified=1 if "open(" in cmd else 0,
+                lines_added=1 if "open(" in cmd else 0,
+                measured=True,
+            ),
             elapsed_s=float(i),
         )
     return rec
