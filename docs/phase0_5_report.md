@@ -1,4 +1,158 @@
-# Phase 0.5 Availability + Real-Agent Report
+# Phase 0.5 Gemini 2.5 Flash Report
+
+Date: 2026-08-29. Continuation from `c051861`. This section supersedes the
+earlier status while preserving every Gemini 3.7 artifact below. No Phase 1A
+work was started and no scientific SWE-bench behavior has been observed.
+
+## 1. Research provenance
+
+```text
+PHASE_0_5_PRIMARY_MODEL_REJECTED = gemini/gemini-3.7-flash
+PHASE_0_5_PRIMARY_REJECTION_REASON = pre-data provider availability gate failure
+PHASE_0_5_FALLBACK_MODEL = gemini/gemini-2.5-flash
+PHASE_0_5_FALLBACK_CHOSEN_BEFORE_SCIENTIFIC_DATA = true
+```
+
+Gemini 3.7 Flash was rejected only because its pre-data gate produced zero
+successful probes and six confirmed 503s. Gemini 2.5 Flash was predeclared
+before any SWE-bench trajectory or outcome, not selected for benchmark
+performance.
+
+Current official Google documentation was retrieved on 2026-08-29 before the
+new API call. It identifies model code `gemini-2.5-flash`, lists the stable
+release, describes low-latency/high-volume/thinking/agentic uses, lists no
+announced shutdown date, and marks Free Tier input and output as free of charge.
+Sources are recorded in `artifacts/phase0_5/gemini_2_5_flash_preflight.json`.
+
+LiteLLM 1.98.0 resolved `gemini/gemini-2.5-flash` to
+`("gemini-2.5-flash", "gemini")`. The live gate adopted the existing
+`GEMINI_API_KEY` name from Windows User scope without logging its value.
+
+## 2. 2.5 availability gate
+
+The fixed prompt `Reply with OK.` was sent; no SWE-bench content was sent.
+
+| metric | result |
+|---|---:|
+| logical probes attempted / completed | 1 / 1 |
+| eventually successful | 0 |
+| physical attempts | 1 |
+| first-attempt success rate | 0% |
+| eventual success rate | 0% |
+| 503 count | 0 |
+| provider timeout count | 0 |
+| 429 count | 0 |
+| other error count | 1 (`INVALID_MODEL`) |
+| successful latency median / max | N/A / N/A |
+| input / output / total tokens | 0 / 0 / 0 |
+| actual spend | $0.00 |
+
+The first physical request returned HTTP 404 `NotFoundError` in approximately
+547 ms. Per the predeclared no-retry rule for invalid-model errors, the gate
+surfaced it immediately and stopped without attempting probes 2–5.
+
+## 3. Gate decision
+
+**STOP.** The API endpoint rejected the officially documented stable model as
+not found for this credential/route. The gate therefore cannot satisfy either
+the 4/5 eventual-success or 3/5 first-attempt-success requirement. No third
+Gemini model was tested.
+
+## 4. Real trajectory
+
+Not run. No mini-SWE-agent trajectory, task behavior, patch, normal termination,
+infrastructure rerun, or scientific success/failure sample exists.
+
+## 5. Provider events
+
+One model-specific and global physical attempt was recorded. It ended
+`INVALID_MODEL` with HTTP 404. There were no retries, retry delay, 503s,
+timeouts, 429s, or recovered failures. The event never entered agent semantics.
+
+## 6. Feature audit
+
+No real-data feature values exist because the gate stopped before the agent.
+The infrastructure audit passes: timeout and 503 counts are separate provider
+metadata; `PROVIDER_TIMEOUT` and `PROVIDER_UNAVAILABLE` are invalid scientific
+terminations; neither may receive `Y_success`; hidden LiteLLM retries are
+disabled; and provider records remain outside Model A/Model B `StepRecord`s.
+
+## 7. Independent evaluator
+
+Not run. No valid normal agent termination exists, so no official `test_patch`
+or benchmark success label was applied or fabricated.
+
+## 8. Checkpoint / restore
+
+Not run because no valid real parent trajectory exists.
+
+## 9. Same-condition forks
+
+CONTROL A, CONTROL B, and CONTROL C were not run.
+
+## 10. Divergence
+
+No agent action, command sequence, output-token difference, patch hash, outcome
+flip, or agent/sampling divergence exists. The only observation is a provider
+availability/configuration event: one physical request ending HTTP 404.
+
+## 11. Preliminary K6
+
+**K6_STATUS = UNTESTED.** There are zero valid continuations.
+
+## 12. Resource / token accounting
+
+- historical Gemini 3.7 attempts remain unchanged: 12;
+- `GLOBAL_PROVIDER_ATTEMPTS`: 13;
+- Gemini-2.5-specific attempts: 1/100 used, 99 remaining;
+- Gemini 2.5 input/output/total tokens: 0/0/0;
+- real trajectory logical calls and physical attempts: 0/0.
+
+## 13. Actual spend
+
+**$0.00.** No billing, priority inference, paid route, fallback provider, or
+third model was enabled.
+
+## 14. Operational profile
+
+The gate ran for approximately 7.84 seconds including process setup; the only
+physical request ended after approximately 547 ms. Parent, checkpoint, restore,
+fork, evaluator, artifact-size, and disk-growth measurements are N/A because the
+real-agent phase did not start.
+
+## 15. Tests
+
+Before the API call, 25 focused tests passed and the full suite reported **116
+passed, 1 skipped** (Docker/image unavailable). New coverage includes provider
+timeout classification/recovery/exhaustion, unlabeled timeout-invalid runs,
+bounded 90-second model requests, and simultaneous global/model ledger updates.
+Final suite: **116 passed, 1 skipped** (Docker/image unavailable) in 8.76 s.
+
+## 16. PASS / MODIFY / FAIL
+
+**MODIFY.** The controlled fallback failed its pre-data availability gate on a
+non-retryable `INVALID_MODEL` response.
+
+## 17. Blockers before Phase 1A
+
+A research-level model/provider decision is required to resolve the conflict
+between current official Google documentation and the live Developer API's HTTP
+404 for this free-tier credential/route. The protocol forbids automatically
+testing a third Gemini model. All remaining real-trajectory, feature, evaluator,
+checkpoint, fork, and K6 requirements remain open.
+
+## 18. Proposed Phase 1A only if PASS
+
+Not proposed because Phase 0.5 is `MODIFY`. Phase 1A remains stopped.
+
+## 19. git diff --stat / status / commit
+
+The work starts from `c0518616d03540cddb901ad9b62cd705e553eca3`. Final diff,
+status, and continuation commit are reported after the final test and audit.
+
+---
+
+# Archived Phase 0.5 Availability + Real-Agent Report
 
 Date: 2026-08-29. Continuation from commit `0be22fe`. This section supersedes
 the older Phase 0.5 status below while retaining it as provenance. No Phase 1A

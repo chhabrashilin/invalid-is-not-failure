@@ -7,8 +7,11 @@ from pydantic import ValidationError
 
 from instrumentation.provider_retry import (
     CallBudget,
+    CompositeCallBudget,
+    GlobalAttemptLedger,
     NonRetryableProviderError,
     ProviderRequestExecutor,
+    ProviderTimeout,
     ProviderUnavailable,
 )
 from instrumentation.recorder import TrajectoryRecorder
@@ -119,6 +122,63 @@ def test_provider_unavailable_receives_no_y_success_label():
         )
 
 
+def test_provider_timeout_retries_below_semantics_and_recovers():
+    calls = 0
+    sleeps = []
+
+    def request():
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            raise TimeoutError("physical request timed out")
+        return "OK"
+
+    executor = ProviderRequestExecutor(
+        call_budget=CallBudget(100),
+        retry_delays=(5.0, 15.0, 30.0),
+        retry_timeouts=True,
+        sleep_fn=sleeps.append,
+    )
+    response, record = executor.call(request)
+    assert response == "OK"
+    assert record.provider_attempt_count == 2
+    assert record.provider_timeout_count == 1
+    assert record.provider_503_count == 0
+    assert record.provider_retry_delay_total == 5.0
+    assert sleeps == [5.0]
+
+
+def test_exhausted_timeouts_produce_unlabelled_provider_timeout():
+    executor = ProviderRequestExecutor(
+        call_budget=CallBudget(100),
+        retry_delays=(5.0, 15.0, 30.0),
+        retry_timeouts=True,
+        sleep_fn=lambda _: None,
+    )
+    with pytest.raises(ProviderTimeout) as caught:
+        executor.call(lambda: (_ for _ in ()).throw(TimeoutError("timed out")))
+    record = caught.value.record
+    assert record.provider_final_status == ProviderFinalStatus.PROVIDER_TIMEOUT
+    assert record.provider_attempt_count == 4
+    assert record.provider_timeout_count == 4
+    assert record.provider_retry_delay_total == 50.0
+
+    disposition = ScientificRunDisposition(
+        session_id="timeout-run",
+        termination_reason=TerminationReason.PROVIDER_TIMEOUT,
+        valid_for_success_modelling=False,
+        y_success=None,
+    )
+    assert disposition.y_success is None
+    with pytest.raises(ValidationError):
+        ScientificRunDisposition(
+            session_id="timeout-run",
+            termination_reason=TerminationReason.PROVIDER_TIMEOUT,
+            valid_for_success_modelling=True,
+            y_success=False,
+        )
+
+
 def test_429_is_surfaced_without_retry():
     budget = CallBudget(100)
     executor = ProviderRequestExecutor(call_budget=budget, sleep_fn=lambda _: None)
@@ -155,6 +215,28 @@ def test_global_ceiling_counts_physical_attempts_not_logical_calls():
     assert executor.records[-1].provider_final_status == ProviderFinalStatus.CALL_CAP_EXCEEDED
 
 
+def test_composite_budget_updates_global_and_model_ledgers(tmp_path):
+    model_path = tmp_path / "model.json"
+    global_path = tmp_path / "global.json"
+    model_budget = CallBudget.from_ledger(
+        model_path,
+        max_calls=100,
+        initial_used=0,
+        metadata={"model_id": "gemini/gemini-2.5-flash"},
+    )
+    global_ledger = GlobalAttemptLedger.from_ledger(global_path, initial_used=12)
+    composite = CompositeCallBudget(
+        model_budget=model_budget,
+        global_ledger=global_ledger,
+        model_id="gemini/gemini-2.5-flash",
+    )
+    executor = ProviderRequestExecutor(call_budget=composite)
+    executor.call(lambda: "OK")
+    assert model_budget.used == 1 and model_budget.remaining == 99
+    assert global_ledger.used == 13
+    assert global_ledger.events[-1]["model_id"] == "gemini/gemini-2.5-flash"
+
+
 def test_phase05_model_disables_hidden_litellm_retries(monkeypatch):
     from minisweagent.models.litellm_model import LitellmModel
 
@@ -173,5 +255,5 @@ def test_phase05_model_disables_hidden_litellm_retries(monkeypatch):
         provider_sleep_fn=lambda _: None,
     )
     assert model._query([]) == "response"
-    assert seen_kwargs == [{"num_retries": 0}]
+    assert seen_kwargs == [{"num_retries": 0, "timeout": 90.0}]
     assert model.provider_executor.records[0].provider_attempt_count == 1

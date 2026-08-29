@@ -887,3 +887,77 @@ insufficient for a valid real-agent checkpoint/fork test at this time.
 **Tests:** 113 passed, 1 skipped (Docker/image unavailable), 17.26 s. The eight
 new regressions cover the seven mandated cases plus suppression of hidden
 LiteLLM retries.
+
+
+---
+
+## 2026-08-29 — Phase 0.5 (cont. 4): predeclared Gemini 2.5 Flash fallback
+
+This fallback was fixed before any scientific SWE-bench trajectory or outcome:
+
+```text
+PHASE_0_5_PRIMARY_MODEL_REJECTED = gemini/gemini-3.7-flash
+PHASE_0_5_PRIMARY_REJECTION_REASON = pre-data provider availability gate failure
+PHASE_0_5_FALLBACK_MODEL = gemini/gemini-2.5-flash
+PHASE_0_5_FALLBACK_CHOSEN_BEFORE_SCIENTIFIC_DATA = true
+PHASE_0_5_25_FLASH_MAX_PHYSICAL_CALLS = 100
+```
+
+Gemini 3.7 Flash was rejected solely for pre-data infrastructure availability:
+the preserved gate observed zero successful probes, six confirmed 503s, and no
+SWE-bench behavior. Gemini 2.5 Flash was not chosen because it performed better
+on SWE-bench; no SWE-bench behavior from either model has been observed.
+
+### Official-document verification before API use
+
+Retrieved 2026-08-29 from current official Google documentation:
+
+- the model page identifies `gemini-2.5-flash` as stable and describes it for
+  large-scale, low-latency, high-volume thinking and agentic use cases;
+- the deprecations page lists the June 17, 2025 stable release and **no shutdown
+  date announced**;
+- the pricing page lists Free Tier input and output as **Free of charge**;
+- the June 17, 2025 release note calls it the first stable 2.5 Flash model.
+
+Sources: `https://ai.google.dev/gemini-api/docs/models/gemini-2.5-flash`,
+`https://ai.google.dev/gemini-api/docs/deprecations`,
+`https://ai.google.dev/gemini-api/docs/pricing`, and
+`https://ai.google.dev/gemini-api/docs/changelog`.
+
+LiteLLM 1.98.0 offline resolution:
+`get_llm_provider("gemini/gemini-2.5-flash")[:2]` →
+`("gemini-2.5-flash", "gemini")`; credential variable `GEMINI_API_KEY`.
+
+The timeout and retry configuration was recorded before probing: 90 seconds per
+physical request, retry only 503/provider timeout, 5/15/30-second backoff, and
+15 seconds between logical probes. The original 12 Gemini 3.7 attempts remain
+immutable. New calls update both an uncapped global provider-attempt ledger and
+an independent 100-call Gemini-2.5-specific ledger. Actual paid spend remains
+capped at $0.00.
+
+### Gemini 2.5 availability result — STOP
+
+The live process confirmed the `GEMINI_API_KEY` name from Windows User scope,
+then sent the fixed prompt `Reply with OK.` to exactly
+`gemini/gemini-2.5-flash`. The first physical request returned HTTP 404
+`NotFoundError`, classified `INVALID_MODEL`, after approximately 547 ms.
+
+Per the predeclared rule, invalid-model errors are never retried. The gate
+stopped after one logical/physical attempt: zero successes, zero 503s, zero
+timeouts, zero 429s, zero tokens, and $0.00 actual spend. The model-specific
+ledger is 1/100 used (99 remain); `GLOBAL_PROVIDER_ATTEMPTS = 13`. The original
+Gemini 3.7 ledger and gate artifacts are unchanged.
+
+**No SWE-bench trajectory was launched.** There is still no scientific outcome,
+feature audit on real data, evaluator label, real checkpoint, restore, control
+fork, divergence result, or K6 evidence. No third model was tested.
+
+**Decision: MODIFY.** A research-level model/provider decision is required
+because current official Google documentation lists the stable model and free
+tier, while the live Developer API route for this credential returned 404. The
+protocol forbids an automatic third-model fallback.
+
+**Tests:** final full suite 116 passed, 1 skipped (Docker/image unavailable) in
+8.76 s. Oracle-leakage, evaluation separation, official-test-patch, provider
+failure separation, dual-ledger, timeout, and raw-immutability coverage remain
+green.

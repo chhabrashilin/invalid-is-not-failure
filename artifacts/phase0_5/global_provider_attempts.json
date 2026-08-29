@@ -1,0 +1,15 @@
+{
+  "phase": "0.5",
+  "accounting_unit": "physical_api_attempt",
+  "global_provider_attempts": 13,
+  "historical_attempts_before_gemini_2_5_flash": 12,
+  "events": [
+    {
+      "ordinal": 13,
+      "scope": "gemini-2.5-availability-probe",
+      "model_id": "gemini/gemini-2.5-flash",
+      "ts": "2026-08-29T16:22:28.425451+00:00"
+    }
+  ],
+  "updated_at": "2026-08-29T16:22:28.425451+00:00"
+}

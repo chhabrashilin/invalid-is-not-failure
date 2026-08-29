@@ -39,6 +39,17 @@ class ProviderUnavailable(RuntimeError):
         self.record = record
 
 
+class ProviderTimeout(RuntimeError):
+    """All permitted attempts ended with a provider request timeout."""
+
+    def __init__(self, record: ProviderCallRecord):
+        super().__init__(
+            "Gemini request timed out after "
+            f"{record.provider_attempt_count} physical API attempts"
+        )
+        self.record = record
+
+
 class NonRetryableProviderError(RuntimeError):
     """A provider error that the Phase 0.5 protocol forbids retrying."""
 
@@ -63,7 +74,7 @@ def provider_status_code(exc: BaseException) -> int | None:
                 return int(value)
         except (TypeError, ValueError):
             pass
-    match = re.search(r"(?<!\d)(401|402|403|404|429|503)(?!\d)", str(exc))
+    match = re.search(r"(?<!\d)(400|401|402|403|404|408|429|503)(?!\d)", str(exc))
     return int(match.group(1)) if match else None
 
 
@@ -72,6 +83,13 @@ def classify_provider_error(exc: BaseException) -> tuple[ProviderFinalStatus, in
     code = provider_status_code(exc)
     name = type(exc).__name__.lower()
     message = str(exc).lower()
+    if (
+        isinstance(exc, TimeoutError)
+        or code == 408
+        or "timeout" in name
+        or "timed out" in message
+    ):
+        return ProviderFinalStatus.PROVIDER_TIMEOUT, code or 408
     if code == 503 or "service_unavailable" in message:
         return ProviderFinalStatus.PROVIDER_UNAVAILABLE, 503
     if code == 429 or "ratelimit" in name or "rate limit" in message:
@@ -82,6 +100,8 @@ def classify_provider_error(exc: BaseException) -> tuple[ProviderFinalStatus, in
         return ProviderFinalStatus.BILLING_ERROR, code
     if code == 404 or "notfound" in name or "invalid model" in message:
         return ProviderFinalStatus.INVALID_MODEL, code
+    if code == 400 or "badrequest" in name or "invalid request" in message:
+        return ProviderFinalStatus.INVALID_REQUEST, code
     return ProviderFinalStatus.OTHER_ERROR, code
 
 
@@ -94,6 +114,7 @@ class CallBudget:
     ledger_path: Path | None = None
     prior_attempts_at_continuation: int | None = None
     events: list[dict[str, Any]] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
     _lock: threading.Lock = field(default_factory=threading.Lock, init=False, repr=False)
 
     @property
@@ -107,6 +128,7 @@ class CallBudget:
         *,
         max_calls: int,
         initial_used: int,
+        metadata: dict[str, Any] | None = None,
     ) -> "CallBudget":
         """Load a ledger, or create it once with the explicitly audited prior use."""
         path = Path(path)
@@ -125,12 +147,14 @@ class CallBudget:
                     payload.get("prior_attempts_at_continuation", initial_used)
                 ),
                 events=list(payload.get("events", [])),
+                metadata=dict(payload.get("metadata", metadata or {})),
             )
         budget = cls(
             max_calls=max_calls,
             used=initial_used,
             ledger_path=path,
             prior_attempts_at_continuation=initial_used,
+            metadata=dict(metadata or {}),
         )
         budget._persist()
         return budget
@@ -147,6 +171,7 @@ class CallBudget:
             "physical_api_attempts_remaining": self.remaining,
             "prior_attempts_at_continuation": self.prior_attempts_at_continuation,
             "events": self.events,
+            "metadata": self.metadata,
             "updated_at": _utcnow(),
         }
         tmp = self.ledger_path.with_suffix(self.ledger_path.suffix + ".tmp")
@@ -166,23 +191,101 @@ class CallBudget:
             self._persist()
 
 
+@dataclass
+class GlobalAttemptLedger:
+    """Uncapped provenance counter spanning every Phase 0.5 provider/model."""
+
+    used: int
+    ledger_path: Path
+    events: list[dict[str, Any]] = field(default_factory=list)
+    _lock: threading.Lock = field(default_factory=threading.Lock, init=False, repr=False)
+
+    @classmethod
+    def from_ledger(cls, path: Path, *, initial_used: int) -> "GlobalAttemptLedger":
+        path = Path(path)
+        if path.exists():
+            payload = json.loads(path.read_text(encoding="utf-8"))
+            return cls(
+                used=int(payload["global_provider_attempts"]),
+                ledger_path=path,
+                events=list(payload.get("events", [])),
+            )
+        ledger = cls(used=initial_used, ledger_path=path)
+        ledger._persist()
+        return ledger
+
+    def _persist(self) -> None:
+        self.ledger_path.parent.mkdir(parents=True, exist_ok=True)
+        payload = {
+            "phase": "0.5",
+            "accounting_unit": "physical_api_attempt",
+            "global_provider_attempts": self.used,
+            "historical_attempts_before_gemini_2_5_flash": 12,
+            "events": self.events,
+            "updated_at": _utcnow(),
+        }
+        tmp = self.ledger_path.with_suffix(self.ledger_path.suffix + ".tmp")
+        tmp.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+        tmp.replace(self.ledger_path)
+
+    def record_attempt(self, *, scope: str, model_id: str) -> None:
+        with self._lock:
+            self.used += 1
+            self.events.append(
+                {
+                    "ordinal": self.used,
+                    "scope": scope,
+                    "model_id": model_id,
+                    "ts": _utcnow(),
+                }
+            )
+            self._persist()
+
+
+@dataclass
+class CompositeCallBudget:
+    """Reserve one attempt in both a model ceiling and the global provenance."""
+
+    model_budget: CallBudget
+    global_ledger: GlobalAttemptLedger
+    model_id: str
+
+    @property
+    def max_calls(self) -> int:
+        return self.model_budget.max_calls
+
+    @property
+    def used(self) -> int:
+        return self.model_budget.used
+
+    @property
+    def remaining(self) -> int:
+        return self.model_budget.remaining
+
+    def check_and_reserve(self, scope: str = "unspecified") -> None:
+        self.model_budget.check_and_reserve(scope)
+        self.global_ledger.record_attempt(scope=scope, model_id=self.model_id)
+
+
 class ProviderRequestExecutor:
     """Execute logical requests under the exact Phase 0.5 transient policy."""
 
     def __init__(
         self,
         *,
-        call_budget: CallBudget,
+        call_budget: CallBudget | CompositeCallBudget,
         records: list[ProviderCallRecord] | None = None,
         retry_delays: tuple[float, ...] = (15.0, 30.0, 60.0),
         sleep_fn: Callable[[float], None] = time.sleep,
         scope: str = "trajectory",
+        retry_timeouts: bool = False,
     ) -> None:
         self.call_budget = call_budget
         self.records = records if records is not None else []
         self.retry_delays = retry_delays
         self.sleep_fn = sleep_fn
         self.scope = scope
+        self.retry_timeouts = retry_timeouts
         self.logical_calls = 0
 
     def call(self, request: Callable[[], T]) -> tuple[T, ProviderCallRecord]:
@@ -193,6 +296,7 @@ class ProviderRequestExecutor:
         t0 = time.monotonic()
         attempts = 0
         n_503 = 0
+        n_timeout = 0
         retry_delay = 0.0
 
         for attempt_index in range(len(self.retry_delays) + 1):
@@ -203,6 +307,7 @@ class ProviderRequestExecutor:
                     logical_call_index=logical_index,
                     provider_attempt_count=attempts,
                     provider_503_count=n_503,
+                    provider_timeout_count=n_timeout,
                     provider_retry_delay_total=retry_delay,
                     provider_final_status=ProviderFinalStatus.CALL_CAP_EXCEEDED,
                     started_ts=started_ts,
@@ -221,6 +326,12 @@ class ProviderRequestExecutor:
                 status, status_code = classify_provider_error(exc)
                 if status == ProviderFinalStatus.PROVIDER_UNAVAILABLE:
                     n_503 += 1
+                elif status == ProviderFinalStatus.PROVIDER_TIMEOUT:
+                    n_timeout += 1
+                retryable = status == ProviderFinalStatus.PROVIDER_UNAVAILABLE or (
+                    status == ProviderFinalStatus.PROVIDER_TIMEOUT and self.retry_timeouts
+                )
+                if retryable:
                     if attempt_index < len(self.retry_delays):
                         delay = self.retry_delays[attempt_index]
                         retry_delay += delay
@@ -230,6 +341,7 @@ class ProviderRequestExecutor:
                         logical_call_index=logical_index,
                         provider_attempt_count=attempts,
                         provider_503_count=n_503,
+                        provider_timeout_count=n_timeout,
                         provider_retry_delay_total=retry_delay,
                         provider_final_status=status,
                         started_ts=started_ts,
@@ -239,12 +351,15 @@ class ProviderRequestExecutor:
                         error_type=type(exc).__name__,
                     )
                     self.records.append(record)
+                    if status == ProviderFinalStatus.PROVIDER_TIMEOUT:
+                        raise ProviderTimeout(record) from exc
                     raise ProviderUnavailable(record) from exc
 
                 record = ProviderCallRecord(
                     logical_call_index=logical_index,
                     provider_attempt_count=attempts,
                     provider_503_count=n_503,
+                    provider_timeout_count=n_timeout,
                     provider_retry_delay_total=retry_delay,
                     provider_final_status=status,
                     started_ts=started_ts,
@@ -260,6 +375,7 @@ class ProviderRequestExecutor:
                 logical_call_index=logical_index,
                 provider_attempt_count=attempts,
                 provider_503_count=n_503,
+                provider_timeout_count=n_timeout,
                 provider_retry_delay_total=retry_delay,
                 provider_final_status=ProviderFinalStatus.SUCCESS,
                 started_ts=started_ts,

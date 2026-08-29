@@ -74,6 +74,9 @@ artifacts/**
 !artifacts/phase0/*/snapshot.json
 !artifacts/phase0_5/
 !artifacts/phase0_5/call_ledger.json
+!artifacts/phase0_5/global_provider_attempts.json
+!artifacts/phase0_5/gemini_2_5_flash_call_ledger.json
+!artifacts/phase0_5/gemini_2_5_flash_preflight.json
 !artifacts/phase0_5/availability/
 !artifacts/phase0_5/availability/*.json
 

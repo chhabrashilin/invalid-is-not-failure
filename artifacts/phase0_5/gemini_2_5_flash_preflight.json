@@ -1,0 +1,37 @@
+{
+  "kind": "phase0_5_gemini_2_5_flash_preflight",
+  "retrieval_date": "2026-08-29",
+  "model": "gemini/gemini-2.5-flash",
+  "official_google_verification": {
+    "model_id": "gemini-2.5-flash",
+    "stable_release": true,
+    "release_date": "2025-06-17",
+    "shutdown_date": "No shutdown date announced",
+    "intended_uses": [
+      "large scale processing",
+      "low-latency",
+      "high volume tasks that require thinking",
+      "agentic use cases"
+    ],
+    "free_tier_input": "Free of charge",
+    "free_tier_output": "Free of charge"
+  },
+  "official_sources": [
+    "https://ai.google.dev/gemini-api/docs/models/gemini-2.5-flash",
+    "https://ai.google.dev/gemini-api/docs/deprecations",
+    "https://ai.google.dev/gemini-api/docs/pricing",
+    "https://ai.google.dev/gemini-api/docs/changelog"
+  ],
+  "litellm": {
+    "version": "1.98.0",
+    "requested_model": "gemini/gemini-2.5-flash",
+    "resolved_model": "gemini-2.5-flash",
+    "provider": "gemini",
+    "credential_env": "GEMINI_API_KEY"
+  },
+  "physical_request_timeout_s_predeclared": 90,
+  "retry_delays_s_predeclared": [5, 15, 30],
+  "logical_probe_spacing_s_predeclared": 15,
+  "phase0_5_25_flash_max_physical_calls": 100,
+  "actual_spend_ceiling_usd": 0.0
+}

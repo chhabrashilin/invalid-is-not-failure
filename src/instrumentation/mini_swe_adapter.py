@@ -36,8 +36,10 @@ from evaluation.test_detect import detect_and_parse
 from instrumentation.provider_retry import (
     CallBudget,
     CallCapExceeded,
+    CompositeCallBudget,
     NonRetryableProviderError,
     ProviderRequestExecutor,
+    ProviderTimeout,
     ProviderUnavailable,
 )
 from instrumentation.recorder import TrajectoryRecorder, estimate_tokens
@@ -212,6 +214,7 @@ class Phase05GeminiModel(LitellmModel):
     abort_exceptions = [
         *LitellmModel.abort_exceptions,
         ProviderUnavailable,
+        ProviderTimeout,
         NonRetryableProviderError,
         CallCapExceeded,
     ]
@@ -219,10 +222,13 @@ class Phase05GeminiModel(LitellmModel):
     def __init__(
         self,
         *,
-        call_budget: CallBudget,
+        call_budget: CallBudget | CompositeCallBudget,
         provider_records: list[ProviderCallRecord] | None = None,
         provider_sleep_fn=time.sleep,
         provider_scope: str = "trajectory",
+        provider_retry_delays: tuple[float, ...] = (5.0, 15.0, 30.0),
+        provider_request_timeout_s: float = 90.0,
+        provider_retry_timeouts: bool = True,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -231,13 +237,20 @@ class Phase05GeminiModel(LitellmModel):
             records=provider_records,
             sleep_fn=provider_sleep_fn,
             scope=provider_scope,
+            retry_delays=provider_retry_delays,
+            retry_timeouts=provider_retry_timeouts,
         )
+        self.provider_request_timeout_s = provider_request_timeout_s
         self._last_provider_record: ProviderCallRecord | None = None
 
     def _query(self, messages: list[dict[str, str]], **kwargs):
         # Disable LiteLLM's own retry mechanism. This executor is the sole retry
         # owner, otherwise hidden SDK retries would evade physical accounting.
-        request_kwargs = {**kwargs, "num_retries": 0}
+        request_kwargs = {
+            **kwargs,
+            "num_retries": 0,
+            "timeout": self.provider_request_timeout_s,
+        }
         response, record = self.provider_executor.call(
             lambda: super(Phase05GeminiModel, self)._query(messages, **request_kwargs)
         )

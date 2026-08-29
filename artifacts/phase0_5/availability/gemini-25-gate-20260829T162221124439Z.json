@@ -1,0 +1,108 @@
+{
+  "kind": "phase0_5_gemini_2_5_flash_availability_gate",
+  "model": "gemini/gemini-2.5-flash",
+  "fixed_prompt": "Reply with OK.",
+  "started_at": "2026-08-29T16:22:21.124439+00:00",
+  "completed_at": "2026-08-29T16:22:28.963779+00:00",
+  "retrieval_date": "2026-08-29",
+  "official_sources": [
+    {
+      "url": "https://ai.google.dev/gemini-api/docs/models/gemini-2.5-flash",
+      "supports": [
+        "model code gemini-2.5-flash",
+        "stable version",
+        "low-latency/high-volume/thinking/agentic workload description"
+      ]
+    },
+    {
+      "url": "https://ai.google.dev/gemini-api/docs/deprecations",
+      "supports": [
+        "stable release June 17 2025",
+        "no shutdown date announced"
+      ]
+    },
+    {
+      "url": "https://ai.google.dev/gemini-api/docs/pricing",
+      "supports": [
+        "Free Tier input free of charge",
+        "Free Tier output free of charge"
+      ]
+    }
+  ],
+  "litellm_version": "1.98.0",
+  "litellm_resolution": {
+    "model": "gemini-2.5-flash",
+    "provider": "gemini"
+  },
+  "credential_env_names_present": [
+    "GEMINI_API_KEY"
+  ],
+  "windows_user_scope_name_adopted": "GEMINI_API_KEY",
+  "policy": {
+    "logical_probe_limit": 5,
+    "retry_delays_s": [
+      5.0,
+      15.0,
+      30.0
+    ],
+    "physical_request_timeout_s": 90.0,
+    "logical_probe_spacing_s": 15.0,
+    "retry_only": [
+      "HTTP_503",
+      "PROVIDER_TIMEOUT"
+    ],
+    "hidden_litellm_retries": 0,
+    "model_specific_physical_call_ceiling": 100
+  },
+  "metrics": {
+    "logical_probes": 1,
+    "logical_probes_completed": 1,
+    "eventually_successful": 0,
+    "first_attempt_successes": 0,
+    "physical_attempts": 1,
+    "first_attempt_success_rate": 0.0,
+    "eventual_success_rate": 0.0,
+    "provider_503_count": 0,
+    "provider_timeout_count": 0,
+    "provider_429_count": 0,
+    "other_error_count": 1,
+    "other_error_types": {
+      "INVALID_MODEL": 1
+    },
+    "median_successful_latency_ms": null,
+    "maximum_successful_latency_ms": null,
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "total_tokens": 0,
+    "actual_spend_usd": 0.0,
+    "model_specific_attempts_used": 1,
+    "model_specific_attempts_remaining": 99
+  },
+  "gate_decision": "STOP",
+  "interrupted": false,
+  "records": [
+    {
+      "logical_call_index": 0,
+      "provider_attempt_count": 1,
+      "provider_503_count": 0,
+      "provider_timeout_count": 0,
+      "provider_retry_delay_total": 0.0,
+      "provider_final_status": "INVALID_MODEL",
+      "started_ts": "2026-08-29T16:22:28.418169+00:00",
+      "finished_ts": "2026-08-29T16:22:28.963779+00:00",
+      "successful_latency_ms": null,
+      "total_latency_ms": 547.0000000022992,
+      "status_code": 404,
+      "error_type": "NotFoundError"
+    }
+  ],
+  "probe_token_usage": [
+    {
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "total_tokens": 0
+    }
+  ],
+  "global_provider_attempts": 13,
+  "interpretation": "infrastructure availability gate; not a model performance benchmark"
+}

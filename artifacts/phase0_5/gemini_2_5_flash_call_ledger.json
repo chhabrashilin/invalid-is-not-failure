@@ -1,0 +1,21 @@
+{
+  "phase": "0.5",
+  "accounting_unit": "physical_api_attempt",
+  "max_physical_api_attempts": 100,
+  "physical_api_attempts_used": 1,
+  "physical_api_attempts_remaining": 99,
+  "prior_attempts_at_continuation": 0,
+  "events": [
+    {
+      "ordinal": 1,
+      "scope": "gemini-2.5-availability-probe",
+      "ts": "2026-08-29T16:22:28.418169+00:00"
+    }
+  ],
+  "metadata": {
+    "model_id": "gemini/gemini-2.5-flash",
+    "constant": "PHASE_0_5_25_FLASH_MAX_PHYSICAL_CALLS",
+    "actual_spend_ceiling_usd": 0.0
+  },
+  "updated_at": "2026-08-29T16:22:28.419276+00:00"
+}
