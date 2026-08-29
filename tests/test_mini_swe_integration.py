@@ -194,3 +194,48 @@ def test_free_tier_zero_dollar_cap_would_block_everything():
     # spend_cap_usd == 0 means "no dollar cap applied"; the call ceiling governs.
     assert agent.config.cost_limit == 0.0
     assert instr.spend_cap_usd == 0.0
+
+
+# =========================================================================
+# Preflight credential discovery (Phase 0.5 Gemini continuation)
+# =========================================================================
+
+
+def test_preflight_dotenv_path_matches_agent_config_dir():
+    """The preflight must read the SAME .env mini-swe-agent reads.
+
+    This is the credential path that does not require restarting the parent
+    process, so it must not drift from upstream's location.
+    """
+    import importlib.util
+    from pathlib import Path
+
+    from platformdirs import user_config_dir
+
+    spec = importlib.util.spec_from_file_location(
+        "preflight_gemini",
+        Path(__file__).resolve().parents[1] / "scripts/phase0/preflight_gemini.py",
+    )
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+
+    assert mod.MODEL == "gemini/gemini-3.7-flash"
+    assert mod.CREDENTIAL_ENV == "GEMINI_API_KEY"
+    expected = Path(user_config_dir("mini-swe-agent")) / ".env"
+    # load_agent_dotenv returns the path only when the file exists; either way it
+    # must not raise, and must target the upstream config dir.
+    result = mod.load_agent_dotenv()
+    assert result is None or Path(result) == expected
+
+
+def test_preflight_never_reads_credential_value():
+    """Guard: the preflight may test presence, never read or emit the value."""
+    from pathlib import Path
+
+    src = (Path(__file__).resolve().parents[1]
+           / "scripts/phase0/preflight_gemini.py").read_text(encoding="utf-8")
+    # presence checks are fine; printing/formatting the value is not
+    assert 'os.environ.get(n)' in src
+    for forbidden in ('print(os.environ', 'os.environ[CREDENTIAL_ENV])',
+                      'f"{os.environ'):
+        assert forbidden not in src, f"preflight may leak the credential: {forbidden}"

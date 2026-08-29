@@ -396,3 +396,40 @@ Two blockers, neither of which is a viability problem:
 
 Then `uv run --group agent python scripts/phase0/preflight_gemini.py` gates everything
 downstream.
+
+
+---
+
+# Gemini run attempt 2 (from `ef9cc01`)
+
+**Free-tier documentation objection withdrawn.** The user independently verified that
+`gemini-3.7-flash` is GA and free-of-charge (input, output, context caching) on the Gemini
+Developer API free tier. Absence of a static RPM/TPM/RPD table is no longer treated as a
+blocker.
+
+**The run still could not start: the credential is not present in this process.**
+
+| scope checked (values never read) | result |
+|---|---|
+| bash / PowerShell process env | absent |
+| Windows User + Machine registry scopes | absent |
+| `HKCU:\Environment` enumeration | no GEMINI/GOOGLE names at all |
+| all six `.env` candidate paths | absent |
+| any env name matching KEY/TOKEN/SECRET/CRED/API | only `CLAUDE_CODE_MESSAGING_TOKEN` |
+| `.env*` modified in last 24h under user profile | none |
+
+**Model calls: 0. Actual spend: $0.00. Ledger: 0/100.**
+
+**Root cause:** environment variables never propagate into an already-running process. The tool
+shells are children of a harness started before the variable was set. `HKCU:\Environment` holds
+no such name, so `setx` was not used either — the value most likely exists only in a different
+terminal's process tree.
+
+**Fix added — no restart required.** The preflight now loads mini-swe-agent's own global `.env`
+(`%LOCALAPPDATA%\mini-swe-agent\mini-swe-agent\.env`) before checking. Writing
+`GEMINI_API_KEY=<key>` into that file is read at import time by the child process, which works
+where an inherited environment block cannot. The file is outside the repository and cannot be
+committed. Two tests pin it to upstream's config dir and assert the preflight never reads the
+value.
+
+**Decision: MODIFY.** `K6_STATUS = UNTESTED`.

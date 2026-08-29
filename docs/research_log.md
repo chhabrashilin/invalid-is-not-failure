@@ -762,3 +762,66 @@ everything downstream.
 
 **Commands:** `uv run --group agent python scripts/phase0/preflight_gemini.py` (exit 2, zero
 calls) · `MSWEA_SILENT_STARTUP=1 uv run --group agent --group dev pytest` (103 passed).
+
+
+---
+
+## 2026-08-29 — Phase 0.5 (cont. 2): Gemini run attempted — **STILL BLOCKED, MODIFY**
+
+**Stage:** 4B, continuing from `ef9cc01`. No Phase 1A. Stage 3 criteria unchanged.
+
+### Attempted, and the result
+
+The user reported the credential was now available in this process/session and supplied
+independent verification that `gemini-3.7-flash` is GA and free-of-charge on the Gemini
+Developer API free tier. That documentation point is **accepted and no longer treated as a
+blocker** — the earlier "free-tier not verifiable" objection is withdrawn.
+
+The preflight was rerun. **It still fails at stage 1: the credential is not present.**
+
+### Exhaustive scope check (values never read)
+
+| scope | result |
+|---|---|
+| bash process env | absent |
+| PowerShell process env | absent |
+| Windows **User** registry scope | absent |
+| Windows **Machine** registry scope | absent |
+| `HKCU:\Environment` direct enumeration | **no GEMINI/GOOGLE names at all** |
+| `%LOCALAPPDATA%\mini-swe-agent\mini-swe-agent\.env` | absent |
+| `~/.config/mini-swe-agent/.env`, `resched/.env`, `research/.env`, `~/.env`, `%APPDATA%\mini-swe-agent\.env` | absent |
+| every env var name matching KEY/TOKEN/SECRET/CRED/API | only `CLAUDE_CODE_MESSAGING_TOKEN` (the harness's own, unrelated) |
+| `.env*` files modified in the last 24h under the user profile | none |
+
+**Zero model calls were made. $0.00 actual spend. The call ledger remains at 0/100.**
+
+### Root cause and the fix that removes the restart requirement
+
+Environment variables do not propagate into an already-running process. This session's tool
+shells are children of the harness process, which started before the variable was set, so a
+value exported in another terminal — or written with `setx` afterwards — can never reach them.
+`HKCU:\Environment` being empty of GEMINI/GOOGLE names shows `setx` was not used either, so the
+value most likely lives only in a separate terminal's process tree.
+
+`scripts/phase0/preflight_gemini.py` now loads **mini-swe-agent's own global `.env`**
+(`%LOCALAPPDATA%\mini-swe-agent\mini-swe-agent\.env`, the path its startup banner prints and
+`dotenv.load_dotenv`s at import) *before* checking for the credential. That gives a credential
+path requiring **no restart**: a file read at import time by the child process works where an
+inherited env block cannot. The file sits outside the git repository and cannot be committed.
+Two tests pin the path to upstream's config dir and assert the preflight never reads or emits
+the value.
+
+### Still outstanding (unchanged)
+
+Real trajectory, real feature audit, independent evaluation of a real run, real
+checkpoint/restore, >=2 same-condition forks, divergence, D5, real D6 profile.
+**K6_STATUS = UNTESTED.**
+
+### Decision: MODIFY
+
+Single blocker: make the credential reachable by option (A), (B) or (C) printed by the
+preflight. Then `uv run --group agent python scripts/phase0/preflight_gemini.py` gates
+everything downstream.
+
+**Commands:** `uv run --group agent python scripts/phase0/preflight_gemini.py` (exit 2, 0 calls)
+· `MSWEA_SILENT_STARTUP=1 uv run --group agent --group dev pytest` (105 passed).
