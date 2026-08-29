@@ -1,0 +1,173 @@
+{
+  "run_id": "phase0-smoke-002",
+  "started": "2026-08-29T12:54:23.479071+00:00",
+  "checks": {
+    "P0.2_docker_available": {
+      "ok": true,
+      "detail": "daemon reachable"
+    },
+    "P0.2_image_available": {
+      "ok": true,
+      "detail": "sha256:e082963099ed7d5a5"
+    },
+    "P0.3_container_started": {
+      "ok": true,
+      "detail": "113b75200b52"
+    },
+    "P0.4_prefix_logged": {
+      "ok": true,
+      "detail": "3 steps"
+    },
+    "P0.6_checkpoint_created": {
+      "ok": true,
+      "detail": "phase0/ckpt:604506bbb4b6 @ step 3"
+    },
+    "P0.3_session_ran_to_termination": {
+      "ok": true,
+      "detail": "6 steps total"
+    },
+    "P0.5_evaluator_ran": {
+      "ok": true,
+      "detail": "success=True score=1.00 passed=2 failed=0"
+    },
+    "P0.11_parent_manifest": {
+      "ok": true,
+      "detail": "hashes verified"
+    },
+    "P0.7_restore_from_checkpoint": {
+      "ok": true,
+      "detail": "3 continuations restored"
+    },
+    "P0.8_continuation_ran": {
+      "ok": true,
+      "detail": [
+        3,
+        3,
+        3
+      ]
+    },
+    "P0.9_same_seed_deterministic": {
+      "ok": true,
+      "detail": {
+        "identical": true,
+        "first_divergent_index": null,
+        "len_a": 3,
+        "len_b": 3
+      }
+    },
+    "P0.9_divergence_detectable": {
+      "ok": true,
+      "detail": {
+        "same_seed": {
+          "identical": true,
+          "first_divergent_index": null,
+          "len_a": 3,
+          "len_b": 3
+        },
+        "different_seed": {
+          "identical": false,
+          "first_divergent_index": 0,
+          "len_a": 3,
+          "len_b": 3
+        },
+        "outcomes": {
+          "same_seed_a": false,
+          "same_seed_b": false,
+          "diff_seed_c": false
+        }
+      }
+    },
+    "P0.11_parent_unchanged_after_forks": {
+      "ok": true,
+      "detail": "hashes still match"
+    }
+  },
+  "parent": {
+    "session_id": "parent-38504259",
+    "steps": 6,
+    "evaluation": {
+      "session_id": "parent-38504259",
+      "instance_id": "astropy__astropy-12907",
+      "evaluator_name": "phase0-pytest-parser",
+      "evaluator_version": "0.1.0",
+      "benchmark_version": "SWE-bench_Verified (princeton-nlp, 500 instances)",
+      "evaluated_ts": "2026-08-29T12:54:52.641544+00:00",
+      "success": true,
+      "score": 1.0,
+      "tests_passed": 2,
+      "tests_failed": 0,
+      "raw_artifact_path": "C:\\Users\\chhab\\Downloads\\Github\\chhabrashilin\\research\\resched\\artifacts\\phase0\\phase0-smoke-002\\evaluator\\evaluator_raw_parent-38504259.txt",
+      "raw_artifact_sha256": "ba9e0d5cfa756860479722fb740e51c23b032dbb33d52b51453ab21daed0e860"
+    },
+    "resource_units": {
+      "model_calls": 6,
+      "completion_tokens": 275
+    }
+  },
+  "forks": [
+    {
+      "label": "same_seed_a",
+      "continuation_id": "cont-same_seed_a-ac96fb",
+      "seed": 101,
+      "command_hashes": [
+        "00d2a000251be87da034dc97684f20b7fd32652f75d270f59720a5714d81f9fd",
+        "f1bd7c9d5093eea981c402d9c88a52123cffb7430cb47ecd852a748cdccd38b6",
+        "2a4182a947bc73acb2e560d62c28da5731b95c6587a5b1bac02e7cda3d2b4364"
+      ],
+      "steps": 3,
+      "success": false,
+      "score": 0.0,
+      "completion_tokens": 74,
+      "manifest_ok": true,
+      "manifest_problems": []
+    },
+    {
+      "label": "same_seed_b",
+      "continuation_id": "cont-same_seed_b-d8bbc5",
+      "seed": 101,
+      "command_hashes": [
+        "00d2a000251be87da034dc97684f20b7fd32652f75d270f59720a5714d81f9fd",
+        "f1bd7c9d5093eea981c402d9c88a52123cffb7430cb47ecd852a748cdccd38b6",
+        "2a4182a947bc73acb2e560d62c28da5731b95c6587a5b1bac02e7cda3d2b4364"
+      ],
+      "steps": 3,
+      "success": false,
+      "score": 0.0,
+      "completion_tokens": 74,
+      "manifest_ok": true,
+      "manifest_problems": []
+    },
+    {
+      "label": "diff_seed_c",
+      "continuation_id": "cont-diff_seed_c-e80af1",
+      "seed": 202,
+      "command_hashes": [
+        "3dac4914fb95f473589a4ab0b7513f3c198e09482eff77f7511ef2915525af57",
+        "f1bd7c9d5093eea981c402d9c88a52123cffb7430cb47ecd852a748cdccd38b6",
+        "2a4182a947bc73acb2e560d62c28da5731b95c6587a5b1bac02e7cda3d2b4364"
+      ],
+      "steps": 3,
+      "success": false,
+      "score": 0.0,
+      "completion_tokens": 72,
+      "manifest_ok": true,
+      "manifest_problems": []
+    }
+  ],
+  "fork_divergence": {
+    "same_seed": {
+      "identical": true,
+      "first_divergent_index": null,
+      "len_a": 3,
+      "len_b": 3
+    },
+    "different_seed": {
+      "identical": false,
+      "first_divergent_index": 0,
+      "len_a": 3,
+      "len_b": 3
+    }
+  },
+  "finished": "2026-08-29T12:55:37.243693+00:00",
+  "all_ok": true
+}

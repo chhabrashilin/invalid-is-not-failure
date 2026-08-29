@@ -1,0 +1,15 @@
+{
+  "dataset": "princeton-nlp/SWE-bench_Verified",
+  "selection_rule": "lexicographically first instance_id (ASCII ascending)",
+  "rule_declared_before_execution": true,
+  "n_instances_seen": 500,
+  "selected_instance_id": "astropy__astropy-12907",
+  "selected_at": "2026-08-29T12:45:10.827502+00:00",
+  "first_five_sorted": [
+    "astropy__astropy-12907",
+    "astropy__astropy-13033",
+    "astropy__astropy-13236",
+    "astropy__astropy-13398",
+    "astropy__astropy-13453"
+  ]
+}

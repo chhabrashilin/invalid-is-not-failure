@@ -1,0 +1,13 @@
+{
+  "snapshot_id": "snap-bf32543d",
+  "parent_session_id": "parent-35879511",
+  "checkpoint_step": 3,
+  "created_ts": "2026-08-29T12:51:59.103895+00:00",
+  "container_id": "aa77bbce5046a84a05c635ba52850febeecf32262ba7bd2c9e7905c6d5330349",
+  "image_ref": "phase0/ckpt:8cc66949af80",
+  "image_id": "sha256:d0359231a5de22167336db5048bf1206fb30f763c62f94cd8b3b53498af0c2da",
+  "filesystem_digest": "sha256:d0359231a5de22167336db5048bf1206fb30f763c62f94cd8b3b53498af0c2da",
+  "message_history_hash": "c8bd697a40d6b8858c87d3741d63c4d474ecfea913135c05186259ad0e01835a",
+  "cumulative_model_calls": 3,
+  "cumulative_completion_tokens": 107
+}

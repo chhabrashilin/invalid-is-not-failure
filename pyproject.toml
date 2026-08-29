@@ -1,0 +1,29 @@
+[project]
+name = "agent-measurement"
+version = "0.0.1"
+description = "Phase 0 infrastructure validation for agent trajectory measurement (Stage 3 design)"
+requires-python = ">=3.10"
+
+# Phase 0 deps only. Deliberately minimal.
+# NO torch / CUDA: there is no NVIDIA GPU on this machine and Stage 3 Plan B
+# (black-box / API-compatible collection) does not require them.
+# swebench's base dependency set excludes torch; the `inference` extra is NOT installed.
+dependencies = [
+    "pydantic>=2.0",   # typed trajectory schema
+    "pyyaml>=6.0",     # experiment configs
+    "docker>=7.0",     # container lifecycle + checkpoint/restore
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=7.4",
+    "pytest-cov>=4.1",
+]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+addopts = "-q"

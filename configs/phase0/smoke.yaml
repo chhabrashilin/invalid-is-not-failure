@@ -1,0 +1,79 @@
+# Phase 0 smoke configuration.
+#
+# SCOPE: infrastructure validation ONLY. No scientific claim is produced by this
+# config. The "agent" is a deterministic mock (docs/research_log.md contains no
+# PHASE_0_API_BUDGET_USD line, so paid API calls are forbidden).
+
+run_id: phase0-smoke-002
+benchmark_version: "SWE-bench_Verified (princeton-nlp, 500 instances)"
+harness_version: "phase0-0.1.0"
+
+instance:
+  # Selected by scripts/phase0/select_instance.py under a pre-declared,
+  # success-blind rule: lexicographically first instance_id.
+  instance_id: astropy__astropy-12907
+  repo: astropy/astropy
+  image: swebench/sweb.eval.x86_64.astropy_1776_astropy-12907:latest
+  workdir: /testbed
+  selection_rule_file: configs/phase0/selected_instance.json
+  base_commit: d16bfe05a744909de4b27f5875fe0d4ed41ce607
+  spec_file: configs/phase0/instance_astropy__astropy-12907.json
+
+# The evaluator is independent of the agent and of the trajectory logger.
+# These are the instance's real FAIL_TO_PASS tests, taken from the dataset row.
+evaluation:
+  # SWE-bench protocol: the hidden test suite must be restored to base_commit
+  # and the instance test_patch applied BEFORE running FAIL_TO_PASS.
+  test_patch_file: configs/phase0/test_patch_astropy__astropy-12907.diff
+  test_files:
+    - astropy/modeling/tests/test_separable.py
+  test_command: >-
+    source /opt/miniconda3/bin/activate && conda activate testbed && cd /testbed &&
+    python -m pytest -rA -q
+    "astropy/modeling/tests/test_separable.py::test_separable[compound_model6-result6]"
+    "astropy/modeling/tests/test_separable.py::test_separable[compound_model9-result9]"
+  timeout_s: 1800
+
+session:
+  # Pre-declared budget cap. Checkpoint indexing is done against THIS,
+  # never against realized trajectory length (Stage 3 §2.1).
+  step_budget_cap: 12
+  token_budget_cap: 0
+  exec_timeout_s: 600
+  track_fs_diff: true
+
+checkpoint:
+  # Fixed in advance, before execution.
+  at_step: 3
+  image_repository: phase0/ckpt
+
+# Scripted mock LM: prefix segment (before checkpoint) and parent continuation.
+mock_lm:
+  prefix_commands:
+    - "cd /testbed && ls -la | head -20"
+    - "cd /testbed && sed -n '240,250p' astropy/modeling/separable.py"
+    - "source /opt/miniconda3/bin/activate && conda activate testbed && cd /testbed && python -m pytest -q 'astropy/modeling/tests/test_separable.py::test_separable[compound_model6-result6]' 2>&1 | tail -5"
+  parent_continuation_commands:
+    - "cd /testbed && python -c \"import pathlib;p=pathlib.Path('astropy/modeling/separable.py');s=p.read_text();old='cright[-right.shape[0]:, -right.shape[1]:] = 1';new='cright[-right.shape[0]:, -right.shape[1]:] = right';assert old in s, 'target line not found';p.write_text(s.replace(old,new));print('patched')\""
+    - "cd /testbed && git diff --stat"
+    - "source /opt/miniconda3/bin/activate && conda activate testbed && cd /testbed && python -m pytest -q 'astropy/modeling/tests/test_separable.py::test_separable[compound_model6-result6]' 2>&1 | tail -5"
+
+# Same-condition fork test (Phase 0 Step 10).
+#   - two forks with the SAME seed  -> must be byte-identical (determinism check)
+#   - one fork with a DIFFERENT seed -> exercises the divergence-measurement path
+# With a mock LM there is no provider nondeterminism; measuring that is Phase 1 work.
+fork:
+  additional_steps: 3
+  same_seed_replicates: 2
+  seed_same: 101
+  seed_different: 202
+  candidate_commands:
+    - - "cd /testbed && git status --short"
+      - "cd /testbed && git status"
+    - - "cd /testbed && python -c \"import pathlib;p=pathlib.Path('astropy/modeling/separable.py');s=p.read_text();old='cright[-right.shape[0]:, -right.shape[1]:] = 1';new='cright[-right.shape[0]:, -right.shape[1]:] = right';p.write_text(s.replace(old,new));print('patched')\""
+      - "cd /testbed && echo 'no edit made'"
+    - - "source /opt/miniconda3/bin/activate && conda activate testbed && cd /testbed && python -m pytest -q 'astropy/modeling/tests/test_separable.py::test_separable[compound_model6-result6]' 2>&1 | tail -5"
+
+output:
+  raw_root: data/raw
+  artifact_root: artifacts/phase0

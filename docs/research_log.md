@@ -450,3 +450,106 @@ marginal); (3) select the model and record the target pass rate and budget cap i
 `docker info`, `wsl -l -v`), web searches and page fetches, and file writes to
 `docs/stage3_measurement_design.md` and `docs/research_log.md`. No installs, no paid API calls,
 no experiments, no generated numbers.
+
+---
+
+## 2026-08-29 — Stage 4 / Phase 0: infrastructure validation — **PASS**
+
+**Stage:** 4 (Phase 0). First implementation milestone. No scheduler, no predictive model, no
+Phase 1, no scientific claim. Stage 3 thresholds and hypotheses are UNCHANGED.
+
+### Cost authorisation
+
+At the start of Phase 0 this log contained **no `PHASE_0_API_BUDGET_USD` line**, so under the
+Phase 0 cost rule **no paid API call was permitted and none was made**. Phase 0 ran entirely on
+a deterministic mock LM. Every mocked session records `model_id` with a `mock:` prefix so mocked
+runs can never be mistaken for real trajectories in later analysis.
+
+**PHASE_0_API_BUDGET_USD = 0.00** (declared retrospectively as the *actual* Phase 0 spend, which
+was zero. This line does NOT authorise future spend: Phase 1 requires its own budget line, to be
+written before any paid run.)
+
+### Version control fixed first
+
+The repository had had **no commits since Stage 1**. Before writing any code:
+`aa9ce83` — *Archive research design through Stage 3* on `master`, deliberately preserving the
+abandoned ReSched direction as research provenance. Work then proceeded on branch
+`phase0-infrastructure`.
+
+### What was built
+
+`pyproject.toml` + `uv.lock` (Python 3.12.13 via uv; pydantic/pyyaml/docker/pytest only —
+**no torch/CUDA**, since there is no NVIDIA GPU and swebench's base deps exclude it);
+`src/trajectory/{schema,features,store}.py`; `src/instrumentation/{recorder,mock_lm,agent_loop}.py`;
+`src/checkpoint/docker_env.py`; `src/evaluation/evaluator.py`; `scripts/phase0/{select_instance,run_phase0}.py`;
+`configs/phase0/*`; 48 tests; `docs/phase0_runbook.md`; `docs/phase0_report.md`.
+
+### Result: PASS on all twelve criteria (P0.1–P0.12)
+
+Real SWE-bench instance image (4.16 GB), 6-step instrumented session, `docker commit` checkpoint
+at a pre-declared step, three restored continuations, independent evaluator, all raw artifacts
+hash-manifested and re-verified. 48/48 tests pass.
+
+### The bug Phase 0 existed to find
+
+**Run 001's evaluator was silently invalid.** It reported `success=false, tests_passed=null`
+because pytest returned *"no tests ran"* (exit 4): the FAIL_TO_PASS node ids
+`test_separable[compound_model6-result6]` / `[compound_model9-result9]` are parametrisations that
+**only exist after the instance `test_patch` is applied**, and the harness had skipped that step.
+Had this reached Phase 1 it would have labelled every one of ~300 sessions a failure and produced
+a confident, entirely fictitious "prediction" result.
+
+Fixed by `apply_test_patch()`: reset test files to `base_commit` (so an agent cannot edit the
+tests it is judged by), `git apply` the instance test patch, then evaluate. Run 002 then
+discriminated correctly — parent (fix applied) **2 passed → success=True**; all three forks
+(no fix) **2 failed → success=False**.
+
+**Run 001's flawed raw data was retained, not deleted or edited**, and run 002 used a new
+`run_id`, per the immutability rule.
+
+### Instance selection (pre-declared, success-blind)
+
+Rule fixed and written to `configs/phase0/selected_instance.json` before execution: sort all 500
+SWE-bench_Verified `instance_id`s as ASCII ascending, take the first → **`astropy__astropy-12907`**.
+Depends only on naming, so it cannot be tuned toward a pass.
+
+### Fork test — what it does and does not show
+
+Same seed (a vs b): **identical**, no divergence. Different seed (a vs c): **divergence detected
+at index 0**. All three outcomes `success=False`; fork c diverged in *actions* while matching in
+*outcome*, so action divergence does not imply outcome divergence — relevant to how divergence is
+measured in Phase 3. **n=3; nothing scientific is claimed.**
+
+**Crucially: with a mock LM there is no provider nondeterminism.** The dominant real source of
+fork divergence — 6–35% for same-model control forks per *The Replay Gap* (arXiv:2608.08239) — is
+**unmeasured**, so falsification criterion K6 remains entirely open.
+
+### Four measurement defects found (Phase 1 work items, not architecture failures)
+
+1. `docker diff` counts non-agent churn — `b_files_changed_total = 537` at k=3, dominated by
+   conda/pytest cache artifacts. Must scope to repository paths or use `git diff --stat`.
+2. **Piping destroys exit-status fidelity.** `... | tail -5` made a *failing* pytest run record
+   `exit_status=0` and `failed_tool_calls=0`. Real agents pipe constantly; without `pipefail` the
+   Model B failure-rate features will be badly biased.
+3. Agent-run tests are frequently unparseable, so `test_invocation=False` and `tests_failed=None`.
+   Direct evidence for the Stage 3 §5 warning that test-derived progress proxies are agent-controlled
+   and high-risk.
+4. `python`/`python3` remain the Windows Store stub; everything must go through `uv run`.
+
+### Hardware confirmation
+
+Docker VM: 12 CPUs / 7.58 GB. **No CUDA GPU** — Stage 3 Plan B is confirmed as the route and
+Plan A (white-box hidden states) remains infeasible locally. ~4.2 GB per instance image and ~40 s
+per fork cycle will not scale to 300 sessions plus forks on this laptop.
+
+### Blockers before Phase 1
+
+(1) Write a Phase 1 budget line before any paid run; (2) fix defects 1–3, which directly corrupt
+Model B features; (3) measure real provider fork divergence (K6); (4) integrate mini-swe-agent
+proper (2.4.6, requires-python >=3.10) rather than the minimal mirror loop; (5) decide throughput
+plan — cloud VM or multi-day local runs; (6) verify RAM headroom beyond ~2 concurrent containers.
+
+**Commands:** see `docs/phase0_runbook.md`. Headline:
+`uv sync --group dev` · `uv run python scripts/phase0/select_instance.py` ·
+`docker pull swebench/sweb.eval.x86_64.astropy_1776_astropy-12907:latest` · `uv run pytest` ·
+`uv run python scripts/phase0/run_phase0.py --config configs/phase0/smoke.yaml`

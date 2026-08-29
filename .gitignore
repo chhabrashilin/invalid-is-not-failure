@@ -9,7 +9,8 @@ develop-eggs/
 downloads/
 eggs/
 .eggs/
-lib60/
+lib/
+lib64/
 sdist/
 wheels/
 share/python-wheels/
@@ -23,8 +24,8 @@ MANIFEST
 venv/
 env/
 ENV/
-.python-version
 .conda/
+# NOTE: .python-version and uv.lock ARE committed -- they are the reproducibility record.
 
 # ---- Testing / typing / linting caches ----
 .pytest_cache/
@@ -53,15 +54,28 @@ Thumbs.db
 desktop.ini
 
 # ---- Experiment outputs ----
-# Raw run outputs are large and regenerable from configs + seeds.
-# They are NOT committed; reproducibility comes from configs, seeds, code version,
-# and the commands recorded in docs/research_log.md.
+# Raw trajectories are large and regenerable from configs + seeds + code version.
+# They are NOT committed; reproducibility comes from configs, the runbook, and
+# the commands recorded in docs/research_log.md. Raw files are immutable on disk
+# and hash-manifested (data/raw/<run_id>/manifest.json).
+data/raw/**
+!data/raw/.gitkeep
+data/processed/**
+!data/processed/.gitkeep
+
+# Phase 0 artifacts: keep the small JSON reports as provenance, exclude bulky
+# evaluator dumps.
+# (directories must be re-included before files inside them can be)
+artifacts/**
+!artifacts/phase0/
+!artifacts/phase0/*/
+!artifacts/phase0/.gitkeep
+!artifacts/phase0/*/phase0_report.json
+!artifacts/phase0/*/snapshot.json
+
 results/**
 !results/.gitkeep
 !results/README.md
-
-# Committed exception: small, final, paper-backing summary artifacts may be added
-# explicitly with `git add -f` and must be regenerable by a logged command.
 
 # Scratch
 scratch/
