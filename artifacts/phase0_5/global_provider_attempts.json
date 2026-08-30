@@ -1,7 +1,7 @@
 {
   "phase": "0.5",
   "accounting_unit": "physical_api_attempt",
-  "global_provider_attempts": 13,
+  "global_provider_attempts": 14,
   "historical_attempts_before_gemini_2_5_flash": 12,
   "events": [
     {
@@ -9,7 +9,13 @@
       "scope": "gemini-2.5-availability-probe",
       "model_id": "gemini/gemini-2.5-flash",
       "ts": "2026-08-29T16:22:28.425451+00:00"
+    },
+    {
+      "ordinal": 14,
+      "scope": "gemini-2.5-404-root-cause-diagnostic",
+      "model_id": "gemini/gemini-2.5-flash",
+      "ts": "2026-08-30T16:54:58.886982+00:00"
     }
   ],
-  "updated_at": "2026-08-29T16:22:28.425451+00:00"
+  "updated_at": "2026-08-30T16:54:58.886982+00:00"
 }

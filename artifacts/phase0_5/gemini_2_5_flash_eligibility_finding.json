@@ -1,0 +1,66 @@
+{
+  "kind": "phase0_5_gemini_2_5_flash_eligibility_finding",
+  "retrieval_date": "2026-08-30",
+  "model": "gemini/gemini-2.5-flash",
+  "question": "Why did the predeclared Gemini 2.5 Flash availability gate return HTTP 404?",
+  "verdict": "PROVIDER_SIDE_ACCOUNT_ELIGIBILITY_RESTRICTION",
+  "verdict_confirms_prior_gate": true,
+  "root_cause": {
+    "http_status": 404,
+    "api_status": "NOT_FOUND",
+    "verbatim_provider_message": "This model models/gemini-2.5-flash is no longer available to new users. Please update your code to use models/gemini-3.6-flash for the latest features and improvements. We recommend you to use the Interactions API.",
+    "interpretation": "The model exists and is generally available, but generateContent is gated to pre-existing users. This Gemini Developer API free-tier credential is not eligible.",
+    "not_caused_by": [
+      "client-side LiteLLM routing or api-version defect (v1beta serves this model)",
+      "model-name typo (the exact ListModels name was used)",
+      "transient provider outage (deterministic 404, not 503)",
+      "authentication or authorization failure (no 401/403; same key lists models successfully)",
+      "quota, rate limiting, or billing (no 429/402)"
+    ]
+  },
+  "listmodels_evidence": {
+    "v1beta_model_count": 53,
+    "v1_model_count": 19,
+    "gemini_2_5_flash_present_v1beta": true,
+    "gemini_2_5_flash_present_v1": true,
+    "gemini_2_5_flash_supported_generation_methods": [
+      "generateContent",
+      "countTokens",
+      "createCachedContent",
+      "batchGenerateContent"
+    ],
+    "key_lesson": "ListModels presence and advertised supportedGenerationMethods do NOT imply generateContent eligibility for the calling account."
+  },
+  "documentation_divergence": {
+    "checked_on": "2026-08-30",
+    "sources": [
+      "https://ai.google.dev/gemini-api/docs/models",
+      "https://ai.google.dev/gemini-api/docs/deprecations",
+      "https://ai.google.dev/gemini-api/docs/pricing"
+    ],
+    "models_page_says": "gemini-2.5-flash listed as Stable, 'best price-performance model for low-latency, high-volume tasks that require reasoning'",
+    "deprecations_page_says": "release date 2025-06-17; no shutdown date announced; no new-user restriction stated",
+    "pricing_page_says": "Free Tier input and output free of charge",
+    "api_says": "404 - no longer available to new users",
+    "conclusion": "Official documentation does not disclose the new-user eligibility gate. Documentation verification alone is INSUFFICIENT as an availability gate; only a live probe establishes eligibility."
+  },
+  "accounting": {
+    "gemini_2_5_flash_inference_attempts_used": 2,
+    "gemini_2_5_flash_inference_attempts_remaining": 98,
+    "phase_0_5_25_flash_max_physical_calls": 100,
+    "global_provider_attempts": 14,
+    "historical_attempts_before_gemini_2_5_flash": 12,
+    "non_generative_metadata_requests": 6,
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "actual_spend_usd": 0.0
+  },
+  "protocol_consequence": {
+    "gate_decision": "STOP",
+    "phase_0_5_decision": "MODIFY",
+    "third_gemini_model_tested": false,
+    "reason_not_tested": "The predeclared protocol forbids automatically testing a third Gemini model after a gate failure, including the gemini-3.6-flash replacement named in the provider's own error message. A research-level model/provider decision is required.",
+    "swebench_trajectory_executed": false,
+    "y_success_assigned": false
+  }
+}

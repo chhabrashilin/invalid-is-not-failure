@@ -961,3 +961,129 @@ protocol forbids an automatic third-model fallback.
 8.76 s. Oracle-leakage, evaluation separation, official-test-patch, provider
 failure separation, dual-ledger, timeout, and raw-immutability coverage remain
 green.
+
+## 2026-08-30 — Phase 0.5 (cont. 5): Gemini 2.5 Flash 404 root cause; STOP confirmed
+
+Continuation from `5dd5580`. This entry adds no scientific data. It diagnoses
+why the predeclared Gemini 2.5 Flash availability gate failed, and confirms the
+prior `STOP` on evidence rather than inference. Every earlier Gemini 3.7 and
+Gemini 2.5 artifact is retained unmodified.
+
+### Provenance constants (unchanged, plus one addition)
+
+```text
+PHASE_0_5_PRIMARY_MODEL_REJECTED = gemini/gemini-3.7-flash
+PHASE_0_5_PRIMARY_REJECTION_REASON = pre-data provider availability gate failure
+PHASE_0_5_FALLBACK_MODEL = gemini/gemini-2.5-flash
+PHASE_0_5_FALLBACK_CHOSEN_BEFORE_SCIENTIFIC_DATA = true
+PHASE_0_5_FALLBACK_REJECTION_REASON = pre-data provider account-eligibility restriction
+```
+
+Neither model has been evaluated on SWE-bench. Neither was chosen or rejected
+for benchmark performance. No scientific outcome has been observed at any point
+in Phase 0.5.
+
+### Root cause: provider-side account-eligibility restriction
+
+The 2026-08-29 gate recorded only `status_code: 404` / `NotFoundError`, which
+left two very different explanations open: a client-side LiteLLM routing defect,
+or a genuine provider refusal. One additional ledgered physical attempt through
+the identical LiteLLM path captured the response body:
+
+> `This model models/gemini-2.5-flash is no longer available to new users.`
+> `Please update your code to use models/gemini-3.6-flash for the latest`
+> `features and improvements. We recommend you to use the Interactions API.`
+
+Two non-generative `ListModels` metadata GETs then eliminated the client-defect
+hypothesis: `models/gemini-2.5-flash` is present and advertises
+`generateContent` in **both** `v1beta` (53 models) and `v1` (19 models) for this
+exact credential. LiteLLM 1.98.0 routes chat through `v1beta`, which does serve
+the model. The refusal is therefore provider-side and account-scoped: the model
+is generally available, but `generateContent` is gated to pre-existing users and
+this free-tier credential is a new user.
+
+Ruled out by evidence: LiteLLM api-version/routing defect, model-name typo,
+transient outage (deterministic 404, not 503), auth failure (no 401/403; the
+same key lists models), quota/rate limiting/billing (no 429/402).
+
+The prior `INVALID_MODEL` classification produced the correct *behaviour*
+(surface immediately, never retry), so no code change was warranted. The label
+is coarser than the reality — this is an eligibility restriction rather than an
+invalid identifier — and that distinction is now recorded in the artifacts
+rather than encoded in the schema, since changing the taxonomy is a
+research-level decision.
+
+### Two instrument defects discovered
+
+1. **Documentation verification is insufficient as an availability gate.** All
+   three official Google pages, independently re-retrieved on 2026-08-30, assert
+   that `gemini-2.5-flash` is stable (models page), carries no announced
+   shutdown date and no new-user restriction (deprecations page), and is free of
+   charge on the free tier for both input and output (pricing page). None
+   discloses the new-user gate. The predeclared "verify against official
+   documentation before API calls" step ran correctly and could not have
+   predicted the refusal.
+2. **`ListModels` presence does not imply `generateContent` eligibility.** The
+   endpoint advertised both the model and the method for a credential that was
+   then refused. `ListModels` must not be used as an availability pre-check.
+
+Consequence for the protocol: any future model predeclaration should be gated by
+a live single-token `generateContent` probe as the *first* action. That is the
+only signal that separates documented availability from account eligibility.
+
+### Gate rule evaluation
+
+| # | rule | result |
+|---|---|---|
+| 1 | >=4 of 5 logical probes eventually succeed | FAIL (0) |
+| 2 | >=3 of 5 succeed on first physical attempt | FAIL (0) |
+| 3 | no 401 / 403 / 429 / billing error | PASS |
+| 4 | <=1 provider timeout | PASS (0) |
+| 5 | >=70 calls remain in the 100-call allowance | PASS (98) |
+
+Rules 1 and 2 fail, so the gate fails and the run stops. **No third Gemini model
+was tested** — including `gemini-3.6-flash`, which Google's own error message
+recommends. Following that recommendation automatically is precisely the
+third-model substitution the protocol forbids; it is referred to a
+research-level decision instead.
+
+### Ledgers
+
+`GLOBAL_PROVIDER_ATTEMPTS = 14` (12 historical Gemini 3.7 attempts, immutable,
+plus 1 gate probe and 1 root-cause diagnostic). Gemini-2.5-specific inference
+attempts: **2 / 100 used, 98 remaining**. Separately disclosed and deliberately
+not charged against the model-specific inference ceiling: **6 non-generative
+`ListModels` metadata GETs**, tracked in
+`artifacts/phase0_5/provider_metadata_requests.json`.
+
+Tokens: 0 input, 0 output — both inference attempts were refused before
+generation. **Actual spend: $0.00.** No billing, paid route, priority inference,
+or fallback provider was enabled. No LiteLLM nominal paid-tier equivalent is
+reported because zero tokens make it identically zero.
+
+### Still absent
+
+No SWE-bench trajectory, no `matplotlib__matplotlib-23412` attempt, no patch, no
+feature audit on real data, no evaluator label, no real checkpoint or restore,
+no control forks, no divergence measurement. `K6_STATUS = UNTESTED` — zero valid
+continuations exist. Nothing was fabricated to fill these gaps.
+
+### Tests
+
+Full suite: **117 passed, 0 failed, exit code 0, in 16.86 s** — one better than
+the previous 116 passed / 1 skipped, because the Docker-dependent test that had
+been skipped for image unavailability now runs and passes. Oracle-leakage,
+evaluation separation, official-`test_patch`, provider-failure separation,
+dual-ledger, provider-timeout classification, and raw-immutability coverage are
+all green. Provider timeout classification tests already existed
+(`test_provider_timeout_retries_below_semantics_and_recovers`,
+`test_exhausted_timeouts_produce_unlabelled_provider_timeout`), so no new test
+was required for this milestone.
+
+### Decision: MODIFY
+
+Two predeclared models have now failed pre-data availability gates for two
+different infrastructure reasons — Gemini 3.7 Flash on transient 503
+unavailability, Gemini 2.5 Flash on permanent new-user ineligibility. A
+research-level model/provider decision is required before Phase 0.5 can produce
+its first valid trajectory. Phase 1A remains stopped and undesigned.

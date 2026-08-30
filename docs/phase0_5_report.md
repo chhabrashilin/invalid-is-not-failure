@@ -1,5 +1,324 @@
 # Phase 0.5 Gemini 2.5 Flash Report
 
+Date: 2026-08-30. Continuation from `5dd5580` (which itself continued
+`c0518616d03540cddb901ad9b62cd705e553eca3`). This section supersedes the status
+below while preserving every prior Gemini 3.7 and Gemini 2.5 artifact intact. No
+Gemini 3.7 result was deleted or rewritten. No SWE-bench trajectory has been
+executed and no Phase 1A work was started.
+
+The new work in this continuation is a **root-cause diagnosis of the Gemini 2.5
+Flash HTTP 404**, independent re-verification of the official documentation, and
+confirmation of the prior `STOP`. The gate decision is unchanged; its
+justification is now evidence-based rather than inferred.
+
+## 1. Research provenance
+
+```text
+PHASE_0_5_PRIMARY_MODEL_REJECTED = gemini/gemini-3.7-flash
+PHASE_0_5_PRIMARY_REJECTION_REASON = pre-data provider availability gate failure
+PHASE_0_5_FALLBACK_MODEL = gemini/gemini-2.5-flash
+PHASE_0_5_FALLBACK_CHOSEN_BEFORE_SCIENTIFIC_DATA = true
+PHASE_0_5_FALLBACK_REJECTION_REASON = pre-data provider account-eligibility restriction
+```
+
+Gemini 3.7 Flash was rejected solely because its pre-data availability gate
+produced zero successful probes across 7 physical attempts with 6 confirmed
+503s, with no 401/403/429/billing error and no SWE-bench trajectory. Gemini 2.5
+Flash was predeclared as a controlled infrastructure fallback **before** any
+SWE-bench behavior was observed. Neither model was chosen or rejected for
+benchmark performance, because no benchmark performance exists for either.
+
+Official Google documentation was independently re-retrieved on **2026-08-30**
+(not merely inherited from the 2026-08-29 preflight):
+
+| source | retrieved | states |
+|---|---|---|
+| `ai.google.dev/gemini-api/docs/models` | 2026-08-30 | `gemini-2.5-flash` listed as **Stable** |
+| `ai.google.dev/gemini-api/docs/deprecations` | 2026-08-30 | released 2025-06-17; **no shutdown date announced**; no new-user restriction stated |
+| `ai.google.dev/gemini-api/docs/pricing` | 2026-08-30 | Free Tier input **free of charge**, output **free of charge** |
+
+LiteLLM 1.98.0 resolves `gemini/gemini-2.5-flash` to `("gemini-2.5-flash",
+"gemini")` via provider `gemini` using `GEMINI_API_KEY`, confirmed again in this
+continuation. The credential is read from Windows User scope and its value is
+never logged or persisted.
+
+## 2. 2.5 availability gate
+
+Predeclared policy, recorded before probing: fixed prompt `Reply with OK.`, at
+most 5 logical probes, 15 s spacing, retries only on 503/timeout with backoff
+5 s / 15 s / 30 s, **per-physical-request timeout 90 s**, hidden LiteLLM retries
+disabled (`num_retries=0`), model-specific ceiling 100 physical calls.
+
+| metric | result |
+|---|---:|
+| logical probes attempted / completed | 1 / 1 |
+| eventually successful | 0 |
+| physical attempts (gate) | 1 |
+| first-attempt success rate | 0 % |
+| eventual success rate | 0 % |
+| 503 count | 0 |
+| provider timeout count | 0 |
+| 429 count | 0 |
+| other error count | 1 (`INVALID_MODEL`, HTTP 404) |
+| successful latency median / max | N/A / N/A |
+| input / output / total tokens | 0 / 0 / 0 |
+| actual spend | $0.00 |
+
+The gate stopped after probe 1 because HTTP 404 is on the predeclared
+**do-not-retry** list. Probes 2-5 were never sent. That is correct protocol
+behaviour, not an early abort.
+
+### Root cause of the 404 (new in this continuation)
+
+The prior run recorded only `status_code: 404` / `NotFoundError` without the
+response body, which left the failure ambiguous between a client routing defect
+and a genuine provider refusal. One additional ledgered physical attempt was
+made through the exact same LiteLLM path to capture the body verbatim:
+
+```text
+{ "error": { "code": 404,
+  "message": "This model models/gemini-2.5-flash is no longer available to new
+              users. Please update your code to use models/gemini-3.6-flash for
+              the latest features and improvements. We recommend you to use the
+              Interactions API.",
+  "status": "NOT_FOUND" } }
+```
+
+Two non-generative `ListModels` metadata GETs (`v1beta` and `v1`) were then used
+to rule out a client-side defect:
+
+| check | v1beta | v1 |
+|---|---|---|
+| total models visible to this key | 53 | 19 |
+| `models/gemini-2.5-flash` present | yes | yes |
+| advertises `generateContent` | yes | yes |
+
+**The failure is a provider-side account-eligibility restriction.** The model is
+generally available and documented as stable and free, but `generateContent` is
+gated to pre-existing users, and this free-tier credential is a "new user". It
+is explicitly *not* caused by: a LiteLLM api-version/routing defect (v1beta does
+serve the model), a model-name typo (the exact `ListModels` name was used), a
+transient outage (a deterministic 404, not a 503), an auth failure (no 401/403;
+the same key lists models successfully), or quota/billing (no 429/402).
+
+**Methodological finding - two instrument defects, now documented:**
+
+1. *Documentation verification is insufficient as an availability gate.* All
+   three official pages assert `gemini-2.5-flash` is stable, free, and
+   un-deprecated on 2026-08-30. None discloses the new-user gate. Only a live
+   probe establishes eligibility. The predeclared "verify against official
+   documentation before API calls" step executed correctly and still could not
+   have predicted this.
+2. *`ListModels` presence does not imply `generateContent` eligibility.* The
+   endpoint advertises the model **and** the method for a credential that is
+   then refused. `ListModels` must not be used as an availability pre-check.
+
+Evidence: `artifacts/phase0_5/gemini_2_5_flash_eligibility_finding.json`,
+`artifacts/phase0_5/availability/gemini-25-404-diagnostic-20260830T165458899002Z.json`,
+`artifacts/phase0_5/availability/gemini-listmodels-20260830T172034299016Z.json`.
+
+## 3. Gate decision
+
+**STOP - confirmed, now on established rather than inferred grounds.**
+
+| # | gate rule | result |
+|---|---|---|
+| 1 | >=4 of 5 logical probes eventually succeed | **FAIL** (0) |
+| 2 | >=3 of 5 succeed on first physical attempt | **FAIL** (0) |
+| 3 | no 401 / 403 / 429 / billing error | PASS (none) |
+| 4 | <=1 provider timeout | PASS (0) |
+| 5 | >=70 calls remain in the 100-call allowance | PASS (98) |
+
+Rules 1 and 2 fail, so the gate fails. Per the predeclared protocol the run
+stops, **no third Gemini model was tested** - including `gemini-3.6-flash`,
+which Google's own error message recommends. Acting on that recommendation would
+be exactly the automatic third-model substitution the protocol forbids. It is
+referred to the research-level decision in section 17.
+
+## 4. Real trajectory
+
+Not run. No mini-SWE-agent trajectory, no `matplotlib__matplotlib-23412`
+attempt, no patch, no normal agent termination, no infrastructure rerun, and no
+scientific success or failure sample exists. Nothing was fabricated.
+
+## 5. Provider events
+
+| event | count |
+|---|---:|
+| gate physical attempts | 1 |
+| root-cause diagnostic physical attempts | 1 |
+| `provider_503_count` | 0 |
+| `provider_timeout_count` | 0 |
+| `provider_429_count` | 0 |
+| provider retries performed | 0 |
+| `provider_retry_delay` total | 0.0 s |
+| recovered provider failures | 0 |
+
+Both attempts terminated `INVALID_MODEL` / HTTP 404 in approximately 547 ms and
+837 ms. No provider event entered agent semantics, because no agent ran. The
+provider retry layer remains strictly below trajectory semantics and 404 is
+correctly classified non-retryable.
+
+## 6. Feature audit
+
+No real-data feature values exist, because the gate stopped before the agent
+started. Fabricating values would be scientific misconduct, so all ten required
+online features remain **UNMEASURED**: `a_budget_fraction_consumed`,
+`b_failed_tool_calls`, `b_test_invocations`, `b_max_command_repeat`,
+`b_repeated_error_count`, `b_repo_files_changed`, `test_framework`,
+`test_exit_status`, `tests_passed_if_parseable`, `tests_failed_if_parseable`.
+
+The *infrastructure* audit passes: `PROVIDER_TIMEOUT` and `PROVIDER_UNAVAILABLE`
+are invalid scientific terminations, neither may receive `Y_success`, provider
+records live outside `StepRecord`s, and hidden LiteLLM retries are disabled.
+
+## 7. Independent evaluator
+
+Not run. No valid normal agent termination exists, so no official `test_patch`
+was applied and no benchmark success label was produced. Evaluation separation
+is untouched and its tests still pass.
+
+## 8. Checkpoint / restore
+
+Not run - there is no valid real parent trajectory to checkpoint.
+
+## 9. Same-condition forks
+
+CONTROL A, CONTROL B and CONTROL C were not run. Zero valid continuations exist.
+
+## 10. Divergence
+
+No agent action, command sequence, output-token difference, patch hash, or
+outcome flip exists. The only observations are **provider availability events**:
+two deterministic HTTP 404 eligibility refusals. Under the required separation,
+these are infrastructure metadata and contribute nothing to agent trajectory
+divergence.
+
+## 11. Preliminary K6
+
+**K6_STATUS = UNTESTED.** There are zero valid continuations, so neither
+`PRELIMINARY_OK` nor `PRELIMINARY_CONCERN` may be set.
+
+## 12. Resource / token accounting
+
+| ledger | value |
+|---|---:|
+| historical Gemini 3.7 attempts (unchanged, immutable) | 12 |
+| `GLOBAL_PROVIDER_ATTEMPTS` (inference) | 14 |
+| Gemini-2.5-specific attempts used / ceiling | 2 / 100 |
+| Gemini-2.5-specific attempts remaining | 98 |
+| non-generative `ListModels` metadata GETs (separate counter) | 6 |
+| Gemini 2.5 input / output / total tokens | 0 / 0 / 0 |
+| real trajectory logical calls / physical attempts | 0 / 0 |
+
+Both ledgers are maintained side by side and no historical provider attempt was
+erased or reset. The 6 metadata GETs are `ListModels` calls, not inference; they
+are tracked in a **separate** counter
+(`artifacts/phase0_5/provider_metadata_requests.json`) and deliberately not
+charged against `PHASE_0_5_25_FLASH_MAX_PHYSICAL_CALLS`, which governs model
+inference. They are disclosed here rather than omitted.
+
+## 13. Actual spend
+
+**$0.00.** Zero tokens were generated or consumed: both inference attempts were
+refused before generation, and `ListModels` is free. No billing, priority
+inference, paid route, or fallback provider was enabled at any point. A LiteLLM
+nominal paid-tier equivalent is not reported because zero tokens make it
+identically $0.00 - there is no NOT-ACTUAL-SPEND figure worth stating.
+
+## 14. Operational profile
+
+| measurement | value |
+|---|---|
+| gate wall time | approximately 7.84 s |
+| gate physical request latency | approximately 547 ms |
+| root-cause diagnostic latency | approximately 837 ms |
+| `ListModels` latency (v1) | approximately 292 ms |
+| test suite wall time | 16.86 s |
+| parent wall time, checkpoint, restore, fork, evaluator time | N/A |
+| artifact size / disk growth | negligible (JSON only) |
+| actual spend | $0.00 |
+
+The real-agent measurements are N/A because the real-agent phase never started.
+
+## 15. Tests
+
+Full suite: **117 passed, 0 failed, exit code 0, 16.86 s.** This is one better
+than the previously recorded 116 passed / 1 skipped - the Docker-dependent test
+that was skipped for image unavailability now runs and passes, so Docker-backed
+coverage is live rather than skipped.
+
+All required guards are maintained and passing: oracle leakage, evaluation
+separation, `test_patch` handling, provider-failure separation, call-ledger
+accounting, and raw immutability.
+
+Provider **timeout classification** tests already exist and were not missing:
+`test_provider_timeout_retries_below_semantics_and_recovers` and
+`test_exhausted_timeouts_produce_unlabelled_provider_timeout` in
+`tests/test_provider_retry.py`, alongside 503 recovery/exhaustion, the
+"recovered failure does not increment behavioural features" guard, the
+"no `Y_success` for provider-invalid runs" guard, 429 surfaced-without-retry,
+physical-vs-logical attempt separation, dual global/model ledger updates, and
+disabled hidden LiteLLM retries. No new test was required for this milestone;
+`classify_provider_error` already routes HTTP 404 to non-retryable
+`INVALID_MODEL`, which is the behaviour the live API exercised.
+
+## 16. PASS / MODIFY / FAIL
+
+**MODIFY.**
+
+The controlled infrastructure fallback failed its pre-data availability gate on
+a non-retryable, deterministic, provider-side account-eligibility refusal. PASS
+is unreachable: there is no valid trajectory, no feature audit, no evaluator
+run, no checkpoint, and no continuations. The two PASS criteria that *are*
+satisfied - model-specific physical attempts 2 <= 100, and actual spend $0.00 -
+are not sufficient on their own.
+
+## 17. Blockers before Phase 1A
+
+**Blocker 1 - no eligible free-tier model is predeclared.** Two predeclared
+models have now failed pre-data gates for two *different* infrastructure
+reasons: Gemini 3.7 Flash on transient 503 unavailability, Gemini 2.5 Flash on
+permanent new-user ineligibility. This requires a research-level model/provider
+decision, which the protocol reserves to the researcher. Evidence gathered
+without testing any third model:
+
+- `gemini-3.6-flash` is the replacement named in Google's own 404 message, is
+  visible to this credential in both `v1beta` and `v1`, is documented as stable
+  with no shutdown date (released 2026-07-21), and is documented free of charge
+  on the free tier. **It has not been probed.** Its eligibility is unknown - and
+  the central lesson of this milestone is that documentation and `ListModels`
+  cannot establish eligibility.
+- `gemini-3.7-flash` remains formally rejected. Its failure mode was 503
+  overload, which is transient by nature rather than permanent like a 404.
+  Re-authorising it would need an explicit new predeclaration, and would be a
+  research-level decision, not an automatic retry.
+- Any older Gemini model may carry the same undisclosed new-user gate.
+
+**Blocker 2 - the availability gate needs an eligibility probe.** The gate
+currently treats documentation verification as a pre-API check. That check
+passed and was wrong. Whatever model is predeclared next should be gated by a
+live single-token `generateContent` probe as the *first* action, since that is
+the only signal that distinguishes documented availability from account
+eligibility.
+
+All remaining Phase 0.5 requirements stay open: real trajectory, feature audit,
+independent evaluator, checkpoint/restore, >=2 valid same-condition
+continuations, and preliminary K6.
+
+## 18. Proposed Phase 1A only if PASS
+
+Not proposed. Phase 0.5 is **MODIFY**, so Phase 1A remains stopped and no
+Phase 1A design is offered in this milestone.
+
+## 19. git diff --stat / status / commit
+
+Reported at the end of this milestone, after the final test run and audit.
+
+---
+
+# Archived — Phase 0.5 Gemini 2.5 Flash Report (gate STOP, before root-cause diagnosis)
+
 Date: 2026-08-29. Continuation from `c051861`. This section supersedes the
 earlier status while preserving every Gemini 3.7 artifact below. No Phase 1A
 work was started and no scientific SWE-bench behavior has been observed.

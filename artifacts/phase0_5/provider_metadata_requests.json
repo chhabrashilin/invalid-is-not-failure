@@ -1,0 +1,22 @@
+{
+  "kind": "phase0_5_provider_metadata_requests",
+  "accounting_unit": "non_generative_metadata_http_request",
+  "note": "Separate from GLOBAL_PROVIDER_ATTEMPTS (inference attempts) and from PHASE_0_5_25_FLASH_MAX_PHYSICAL_CALLS. Disclosed, free, never billed.",
+  "requests": 6,
+  "events": [
+    {
+      "scope": "listmodels-eligibility-diagnostic-adhoc",
+      "requests": 4,
+      "ts": "2026-08-30T16:5x:00+00:00 (approx; ad-hoc, pre-snapshot)",
+      "artifact": null,
+      "note": "Four exploratory ListModels GETs (v1beta+v1, run twice) made before the persisted snapshot script existed. Disclosed for completeness."
+    },
+    {
+      "scope": "listmodels-eligibility-diagnostic",
+      "requests": 2,
+      "ts": "2026-08-30T17:20:34.299016+00:00",
+      "artifact": "gemini-listmodels-20260830T172034299016Z.json"
+    }
+  ],
+  "updated_at": "2026-08-30T17:20:35.177744+00:00"
+}
