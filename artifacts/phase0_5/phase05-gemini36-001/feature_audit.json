@@ -1,0 +1,264 @@
+{
+  "kind": "phase0_5_feature_audit",
+  "run_dir": "data/raw/phase05-gemini36-001/parent-1b355d2f",
+  "session_id": "parent-1b355d2f",
+  "execution_backend": "mini_swe_agent",
+  "model_id": "gemini/gemini-3.6-flash",
+  "steps_audited": 9,
+  "step_budget_cap": 12,
+  "rows": [
+    {
+      "feature": "a_budget_fraction_consumed",
+      "computed_value": 0.75,
+      "raw_evidence": {
+        "step_id": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "session.step_budget_cap": 12
+      },
+      "online_available": true,
+      "verdict": "PASS"
+    },
+    {
+      "feature": "b_failed_tool_calls",
+      "computed_value": 0.0,
+      "raw_evidence": {
+        "exit_status": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "error_category": [
+          "none",
+          "none",
+          "none",
+          "none",
+          "none",
+          "none",
+          "none",
+          "none",
+          "none"
+        ],
+        "cumulative_failed_tool_calls": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "online_available": true,
+      "verdict": "PASS"
+    },
+    {
+      "feature": "b_test_invocations",
+      "computed_value": 0.0,
+      "raw_evidence": {
+        "test_invocation": [
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false
+        ],
+        "test_status": [
+          "TEST_NOT_RUN",
+          "TEST_NOT_RUN",
+          "TEST_NOT_RUN",
+          "TEST_NOT_RUN",
+          "TEST_NOT_RUN",
+          "TEST_NOT_RUN",
+          "TEST_NOT_RUN",
+          "TEST_NOT_RUN",
+          "TEST_NOT_RUN"
+        ]
+      },
+      "online_available": true,
+      "verdict": "PASS"
+    },
+    {
+      "feature": "b_max_command_repeat",
+      "computed_value": 1.0,
+      "raw_evidence": {
+        "command_normalized_hash": [
+          "36f87748e65a17097d11967e3d0cce50e9854710d77cd14ce0dbbba579b67a74",
+          "130149d56076c463969b2ea3c6b204760a2500ec9a17fff9e7d0320661909f36",
+          "5063bf7240c9ed7b494fdf9b7263bb7874a65e6fe1583a63e7094ef21e20b3a2",
+          "be6e8ed27d860480b740f731ec342d53947b93531485408f3c0b599a152e3470",
+          "5213afe12731e5313c3bf1ab19e7fc7254479197202b503c85b584aa01fd350b",
+          "522ec2c92602478182815e46eaa451f98fdf2ccee3137d3ff8a971fcd4dbfa70",
+          "71b8823351fa67d8a7f62a3e7bd9b86f37ea273842d569eb1d7d815c57bd8527",
+          "294b6af3a7cc11e853deb9b775d482d1d2555fd2cb00f764b3ce8ebce90c46c5",
+          "f567999b48bbdedb686c4e0d79b63e3b55c1d046daed5fa21fe99b5038bd80e3"
+        ],
+        "repeated_command_k": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "online_available": true,
+      "verdict": "PASS"
+    },
+    {
+      "feature": "b_repeated_error_count",
+      "computed_value": 0.0,
+      "raw_evidence": {
+        "error_category": [
+          "none",
+          "none",
+          "none",
+          "none",
+          "none",
+          "none",
+          "none",
+          "none",
+          "none"
+        ],
+        "repeated_error_k": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "online_available": true,
+      "verdict": "PASS"
+    },
+    {
+      "feature": "b_repo_files_changed",
+      "computed_value": 0.0,
+      "raw_evidence": {
+        "repo_files_modified": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "repo_files_added": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "repo_files_deleted": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "repo_changes_measured": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ]
+      },
+      "online_available": true,
+      "verdict": "PASS"
+    },
+    {
+      "feature": "test_framework",
+      "computed_value": [],
+      "raw_evidence": {
+        "test_invocation_steps": []
+      },
+      "online_available": true,
+      "verdict": "PASS"
+    },
+    {
+      "feature": "test_exit_status",
+      "computed_value": [],
+      "raw_evidence": {
+        "test_invocation_steps": []
+      },
+      "online_available": true,
+      "verdict": "PASS"
+    },
+    {
+      "feature": "tests_passed_if_parseable",
+      "computed_value": [],
+      "raw_evidence": {
+        "test_invocation_steps": []
+      },
+      "online_available": true,
+      "verdict": "PASS"
+    },
+    {
+      "feature": "tests_failed_if_parseable",
+      "computed_value": [],
+      "raw_evidence": {
+        "test_invocation_steps": []
+      },
+      "online_available": true,
+      "verdict": "PASS"
+    },
+    {
+      "feature": "cumulative_consistency_check",
+      "computed_value": {
+        "failed_tool_calls_recorder_vs_feature": [
+          0,
+          0.0
+        ],
+        "match": true
+      },
+      "raw_evidence": "recorder live counters vs offline recomputation",
+      "online_available": true,
+      "verdict": "PASS"
+    }
+  ],
+  "all_pass": true
+}

@@ -1,0 +1,195 @@
+{
+  "kind": "phase0_5_gemini_3_6_flash_availability_gate",
+  "step": "STEP 2 - availability gate",
+  "model": "gemini/gemini-3.6-flash",
+  "fixed_prompt": "Reply with OK.",
+  "started_at": "2026-08-30T18:11:23.563671+00:00",
+  "completed_at": "2026-08-30T18:13:50.480337+00:00",
+  "retrieval_date": "2026-08-30",
+  "official_sources": [
+    {
+      "url": "https://ai.google.dev/gemini-api/docs/models",
+      "supports": [
+        "model code gemini-3.6-flash",
+        "stable",
+        "available on the Gemini Developer API"
+      ]
+    },
+    {
+      "url": "https://ai.google.dev/gemini-api/docs/deprecations",
+      "supports": [
+        "release date 2026-07-21",
+        "no shutdown date announced"
+      ]
+    },
+    {
+      "url": "https://ai.google.dev/gemini-api/docs/pricing",
+      "supports": [
+        "Free Tier input free of charge",
+        "Free Tier output free of charge"
+      ]
+    }
+  ],
+  "litellm_version": "1.98.0",
+  "litellm_resolution": {
+    "model": "gemini-3.6-flash",
+    "provider": "gemini"
+  },
+  "credential_env_names_present": [
+    "GEMINI_API_KEY"
+  ],
+  "windows_user_scope_name_adopted": "GEMINI_API_KEY",
+  "policy": {
+    "logical_probe_limit": 5,
+    "retry_delays_s": [
+      5.0,
+      15.0,
+      30.0
+    ],
+    "physical_request_timeout_s": 90.0,
+    "logical_probe_spacing_s": 15.0,
+    "retry_only": [
+      "HTTP_503",
+      "PROVIDER_TIMEOUT"
+    ],
+    "hidden_litellm_retries": 0,
+    "model_specific_physical_call_ceiling": 100,
+    "min_remaining_for_trajectory": 70
+  },
+  "gate_rule": {
+    "1_eventual_successes_min": 4,
+    "2_first_attempt_successes_min": 3,
+    "3_forbidden_errors": "no 401/403/404/429/billing",
+    "4_max_timeouts": 1,
+    "5_min_remaining_slots": 70
+  },
+  "metrics": {
+    "logical_probes": 5,
+    "logical_probes_completed": 5,
+    "eventually_successful": 5,
+    "first_attempt_successes": 5,
+    "physical_attempts": 5,
+    "first_attempt_success_rate": 1.0,
+    "eventual_success_rate": 1.0,
+    "provider_503_count": 0,
+    "provider_timeout_count": 0,
+    "provider_429_count": 0,
+    "provider_retry_delay_total_s": 0.0,
+    "forbidden_error_count": 0,
+    "forbidden_error_types": {},
+    "status_counts": {
+      "SUCCESS": 5
+    },
+    "median_successful_latency_ms": 14577.999999994063,
+    "maximum_successful_latency_ms": 38952.99999999406,
+    "input_tokens": 25,
+    "output_tokens": 5,
+    "total_tokens": 30,
+    "actual_spend_usd": 0.0,
+    "model_specific_attempts_used": 5,
+    "model_specific_attempts_remaining": 94
+  },
+  "gate_decision": "PROCEED",
+  "interrupted": false,
+  "records": [
+    {
+      "logical_call_index": 0,
+      "provider_attempt_count": 1,
+      "provider_503_count": 0,
+      "provider_timeout_count": 0,
+      "provider_retry_delay_total": 0.0,
+      "provider_final_status": "SUCCESS",
+      "started_ts": "2026-08-30T18:11:28.646481+00:00",
+      "finished_ts": "2026-08-30T18:12:07.612085+00:00",
+      "successful_latency_ms": 38952.99999999406,
+      "total_latency_ms": 38967.99999999348,
+      "status_code": 200,
+      "error_type": null
+    },
+    {
+      "logical_call_index": 1,
+      "provider_attempt_count": 1,
+      "provider_503_count": 0,
+      "provider_timeout_count": 0,
+      "provider_retry_delay_total": 0.0,
+      "provider_final_status": "SUCCESS",
+      "started_ts": "2026-08-30T18:12:22.653202+00:00",
+      "finished_ts": "2026-08-30T18:12:27.224995+00:00",
+      "successful_latency_ms": 4562.999999994645,
+      "total_latency_ms": 4577.999999994063,
+      "status_code": 200,
+      "error_type": null
+    },
+    {
+      "logical_call_index": 2,
+      "provider_attempt_count": 1,
+      "provider_503_count": 0,
+      "provider_timeout_count": 0,
+      "provider_retry_delay_total": 0.0,
+      "provider_final_status": "SUCCESS",
+      "started_ts": "2026-08-30T18:12:42.226800+00:00",
+      "finished_ts": "2026-08-30T18:13:04.842150+00:00",
+      "successful_latency_ms": 22610.000000000582,
+      "total_latency_ms": 22625.0,
+      "status_code": 200,
+      "error_type": null
+    },
+    {
+      "logical_call_index": 3,
+      "provider_attempt_count": 1,
+      "provider_503_count": 0,
+      "provider_timeout_count": 0,
+      "provider_retry_delay_total": 0.0,
+      "provider_final_status": "SUCCESS",
+      "started_ts": "2026-08-30T18:13:19.843910+00:00",
+      "finished_ts": "2026-08-30T18:13:20.878859+00:00",
+      "successful_latency_ms": 1031.0000000026776,
+      "total_latency_ms": 1031.0000000026776,
+      "status_code": 200,
+      "error_type": null
+    },
+    {
+      "logical_call_index": 4,
+      "provider_attempt_count": 1,
+      "provider_503_count": 0,
+      "provider_timeout_count": 0,
+      "provider_retry_delay_total": 0.0,
+      "provider_final_status": "SUCCESS",
+      "started_ts": "2026-08-30T18:13:35.883173+00:00",
+      "finished_ts": "2026-08-30T18:13:50.480337+00:00",
+      "successful_latency_ms": 14577.999999994063,
+      "total_latency_ms": 14593.999999997322,
+      "status_code": 200,
+      "error_type": null
+    }
+  ],
+  "probe_token_usage": [
+    {
+      "input_tokens": 5,
+      "output_tokens": 1,
+      "total_tokens": 6
+    },
+    {
+      "input_tokens": 5,
+      "output_tokens": 1,
+      "total_tokens": 6
+    },
+    {
+      "input_tokens": 5,
+      "output_tokens": 1,
+      "total_tokens": 6
+    },
+    {
+      "input_tokens": 5,
+      "output_tokens": 1,
+      "total_tokens": 6
+    },
+    {
+      "input_tokens": 5,
+      "output_tokens": 1,
+      "total_tokens": 6
+    }
+  ],
+  "global_provider_attempts": 20,
+  "interpretation": "infrastructure availability gate; not a model performance benchmark"
+}

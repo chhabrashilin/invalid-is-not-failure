@@ -1,0 +1,167 @@
+{
+  "phase": "0.5",
+  "accounting_unit": "physical_api_attempt",
+  "max_physical_api_attempts": 100,
+  "physical_api_attempts_used": 30,
+  "physical_api_attempts_remaining": 70,
+  "prior_attempts_at_continuation": 0,
+  "events": [
+    {
+      "ordinal": 1,
+      "scope": "gemini-3.6-eligibility-probe",
+      "ts": "2026-08-30T18:10:20.266252+00:00"
+    },
+    {
+      "ordinal": 2,
+      "scope": "gemini-3.6-availability-probe",
+      "ts": "2026-08-30T18:11:28.646481+00:00"
+    },
+    {
+      "ordinal": 3,
+      "scope": "gemini-3.6-availability-probe",
+      "ts": "2026-08-30T18:12:22.653202+00:00"
+    },
+    {
+      "ordinal": 4,
+      "scope": "gemini-3.6-availability-probe",
+      "ts": "2026-08-30T18:12:42.226800+00:00"
+    },
+    {
+      "ordinal": 5,
+      "scope": "gemini-3.6-availability-probe",
+      "ts": "2026-08-30T18:13:19.843910+00:00"
+    },
+    {
+      "ordinal": 6,
+      "scope": "gemini-3.6-availability-probe",
+      "ts": "2026-08-30T18:13:35.883173+00:00"
+    },
+    {
+      "ordinal": 7,
+      "scope": "parent",
+      "ts": "2026-08-30T18:51:29.816944+00:00"
+    },
+    {
+      "ordinal": 8,
+      "scope": "parent",
+      "ts": "2026-08-30T18:51:36.236073+00:00"
+    },
+    {
+      "ordinal": 9,
+      "scope": "parent",
+      "ts": "2026-08-30T18:51:39.949378+00:00"
+    },
+    {
+      "ordinal": 10,
+      "scope": "parent",
+      "ts": "2026-08-30T18:59:12.393790+00:00"
+    },
+    {
+      "ordinal": 11,
+      "scope": "parent",
+      "ts": "2026-08-30T18:59:20.817714+00:00"
+    },
+    {
+      "ordinal": 12,
+      "scope": "parent",
+      "ts": "2026-08-30T18:59:31.116970+00:00"
+    },
+    {
+      "ordinal": 13,
+      "scope": "parent",
+      "ts": "2026-08-30T18:59:35.665183+00:00"
+    },
+    {
+      "ordinal": 14,
+      "scope": "parent",
+      "ts": "2026-08-30T18:59:40.175816+00:00"
+    },
+    {
+      "ordinal": 15,
+      "scope": "parent",
+      "ts": "2026-08-30T18:59:45.854220+00:00"
+    },
+    {
+      "ordinal": 16,
+      "scope": "parent",
+      "ts": "2026-08-30T18:59:51.016488+00:00"
+    },
+    {
+      "ordinal": 17,
+      "scope": "cont-control_a-bfebd1",
+      "ts": "2026-08-30T18:59:53.850545+00:00"
+    },
+    {
+      "ordinal": 18,
+      "scope": "cont-control_b-cc02ed",
+      "ts": "2026-08-30T18:59:55.186408+00:00"
+    },
+    {
+      "ordinal": 19,
+      "scope": "cont-control_c-46b815",
+      "ts": "2026-08-30T18:59:56.520262+00:00"
+    },
+    {
+      "ordinal": 20,
+      "scope": "gemini-3.6-quota-diagnostic",
+      "ts": "2026-08-30T19:01:22.258181+00:00"
+    },
+    {
+      "ordinal": 21,
+      "scope": "parent",
+      "ts": "2026-08-30T19:06:21.871689+00:00"
+    },
+    {
+      "ordinal": 22,
+      "scope": "parent",
+      "ts": "2026-08-30T19:06:31.575051+00:00"
+    },
+    {
+      "ordinal": 23,
+      "scope": "parent",
+      "ts": "2026-08-30T19:07:04.909375+00:00"
+    },
+    {
+      "ordinal": 24,
+      "scope": "parent",
+      "ts": "2026-08-30T19:15:44.427697+00:00"
+    },
+    {
+      "ordinal": 25,
+      "scope": "parent",
+      "ts": "2026-08-30T19:15:50.537731+00:00"
+    },
+    {
+      "ordinal": 26,
+      "scope": "cont-control_a-3b7b83",
+      "ts": "2026-08-30T19:15:53.603685+00:00"
+    },
+    {
+      "ordinal": 27,
+      "scope": "cont-control_b-cac7c1",
+      "ts": "2026-08-30T19:15:56.329958+00:00"
+    },
+    {
+      "ordinal": 28,
+      "scope": "cont-control_c-2547a7",
+      "ts": "2026-08-30T19:15:59.008171+00:00"
+    },
+    {
+      "ordinal": 29,
+      "scope": "token-fix-verification",
+      "ts": "2026-08-31T06:53:35.794537+00:00"
+    },
+    {
+      "ordinal": 30,
+      "scope": "token-fix-verification",
+      "ts": "2026-09-01T21:26:24.514996+00:00"
+    }
+  ],
+  "metadata": {
+    "model_id": "gemini/gemini-3.6-flash",
+    "constant": "PHASE_0_5_36_FLASH_MAX_PHYSICAL_CALLS",
+    "actual_spend_ceiling_usd": 0.0,
+    "note": "Independent of the immutable Gemini 3.7 and Gemini 2.5 ledgers. Historical attempts do not count against this allowance."
+  },
+  "updated_at": "2026-09-01T21:26:24.516608+00:00"
+}

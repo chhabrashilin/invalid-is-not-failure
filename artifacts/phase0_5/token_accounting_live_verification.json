@@ -1,0 +1,21 @@
+{
+  "kind": "phase0_5_token_accounting_live_verification",
+  "checked_on": "2026-09-01",
+  "model": "gemini/gemini-3.6-flash",
+  "purpose": "confirm the adapter reads REAL provider usage for a tool-calling response",
+  "message_content_is_null": true,
+  "extra_has_top_level_usage": false,
+  "nested_response_usage": {
+    "prompt_tokens": 56,
+    "completion_tokens": 46,
+    "total_tokens": 102
+  },
+  "extracted_prompt_tokens": 56,
+  "extracted_completion_tokens": 46,
+  "pre_fix_would_have_recorded_completion_tokens": 1,
+  "actual_spend_usd": 0.0,
+  "model_specific_attempts_used": 30,
+  "model_specific_attempts_remaining": 70,
+  "global_provider_attempts": 44,
+  "verdict": "PASS - real provider usage extracted"
+}

@@ -1,0 +1,39 @@
+{
+  "kind": "phase0_5_gemini_3_6_flash_eligibility_probe",
+  "step": "STEP 1 - single live generateContent eligibility probe",
+  "model": "gemini/gemini-3.6-flash",
+  "fixed_prompt": "Reply with OK.",
+  "started_at": "2026-08-30T18:10:20.315971+00:00",
+  "retrieval_date": "2026-08-30",
+  "policy": {
+    "physical_attempts_permitted": 1,
+    "retries": 0,
+    "retry_on": [],
+    "physical_request_timeout_s": 90.0,
+    "hidden_litellm_retries": 0,
+    "fallback_model_or_provider": null,
+    "swebench_content_sent": false
+  },
+  "litellm_version": "1.98.0",
+  "litellm_resolution": {
+    "model": "gemini-3.6-flash",
+    "provider": "gemini"
+  },
+  "credential_env_adopted": "GEMINI_API_KEY",
+  "provider_final_status": "SUCCESS",
+  "http_status": 200,
+  "latency_ms": 2616.2609000020893,
+  "sanitized_response_text": "OK",
+  "input_tokens": 5,
+  "output_tokens": 1,
+  "total_tokens": 6,
+  "eligibility": "ELIGIBLE",
+  "decision": "PROCEED_TO_AVAILABILITY_GATE",
+  "completed_at": "2026-08-30T18:10:22.943362+00:00",
+  "physical_attempt_count": 1,
+  "actual_spend_usd": 0.0,
+  "global_provider_attempts": 15,
+  "model_specific_attempts_used": 1,
+  "model_specific_attempts_remaining": 99,
+  "interpretation": "account eligibility test; not a model performance benchmark"
+}

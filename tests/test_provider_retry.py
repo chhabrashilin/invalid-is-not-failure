@@ -257,3 +257,140 @@ def test_phase05_model_disables_hidden_litellm_retries(monkeypatch):
     assert model._query([]) == "response"
     assert seen_kwargs == [{"num_retries": 0, "timeout": 90.0}]
     assert model.provider_executor.records[0].provider_attempt_count == 1
+
+
+# ---------------------------------------------------------------------------
+# Live defect (2026-08-30): a 429 that ended the real Phase 0.5 run recorded
+# only `status_code` and `error_type`, so it was impossible to tell a per-minute
+# burst limit from a daily quota once the process had exited. The provider body
+# is now persisted, bounded and secret-redacted.
+# ---------------------------------------------------------------------------
+
+
+class _MessageError(RuntimeError):
+    def __init__(self, status_code: int, message: str):
+        super().__init__(message)
+        self.status_code = status_code
+
+
+def test_non_retryable_error_persists_redacted_provider_message():
+    budget = CallBudget(max_calls=5)
+    records: list = []
+    executor = ProviderRequestExecutor(call_budget=budget, records=records)
+    body = (
+        '{"error":{"code":429,"message":"Quota exceeded for quota metric '
+        "'Generate Content API requests per minute'\"}}"
+    )
+
+    def request():
+        raise _MessageError(429, body)
+
+    with pytest.raises(NonRetryableProviderError):
+        executor.call(request)
+
+    assert records[-1].provider_final_status == ProviderFinalStatus.RATE_LIMITED
+    head = records[-1].error_message_head
+    assert head is not None, "429 body was not persisted; quota type undiagnosable"
+    assert "per minute" in head, "the quota-type evidence must survive redaction"
+
+
+def test_exhausted_retry_record_persists_provider_message():
+    budget = CallBudget(max_calls=5)
+    records: list = []
+    executor = ProviderRequestExecutor(
+        call_budget=budget, records=records, retry_delays=(0.0,), sleep_fn=lambda _: None
+    )
+
+    def request():
+        raise _MessageError(503, "upstream overloaded: model busy")
+
+    with pytest.raises(ProviderUnavailable):
+        executor.call(request)
+
+    assert records[-1].error_message_head is not None
+    assert "overloaded" in records[-1].error_message_head
+
+
+def test_provider_message_never_persists_the_api_key():
+    """Gemini errors echo the request URL, which carries `?key=<API_KEY>`."""
+    from instrumentation.provider_retry import (
+        PROVIDER_MESSAGE_HEAD_LIMIT,
+        redact_provider_message,
+    )
+
+    # Assembled rather than written literally so secret scanners do not
+    # flag this obviously-synthetic fixture as a real credential.
+    secret = "AIza" + "Sy" + ("ABCDEFGHIJKLMNOPQRSTUVWX" + "1234567890")
+    samples = [
+        f"GET https://generativelanguage.googleapis.com/v1beta/models/m:generateContent?key={secret}",
+        f"api_key={secret}",
+        f"Authorization: Bearer {secret}",
+        f"bare {secret} embedded in prose",
+    ]
+    for sample in samples:
+        cleaned = redact_provider_message(sample)
+        assert secret not in cleaned, f"credential leaked from: {sample[:40]}"
+        assert "<REDACTED>" in cleaned
+
+    # The 429 diagnostic text itself must be preserved.
+    quota = '{"error":{"code":429,"message":"Quota exceeded ... per minute"}}'
+    assert redact_provider_message(quota) == quota
+
+    # Bounded, so a huge body cannot bloat the raw trajectory.
+    assert len(redact_provider_message("x" * 10_000)) == PROVIDER_MESSAGE_HEAD_LIMIT
+
+
+def test_successful_call_record_has_no_provider_message():
+    budget = CallBudget(max_calls=5)
+    records: list = []
+    executor = ProviderRequestExecutor(call_budget=budget, records=records)
+    executor.call(lambda: "ok")
+    assert records[-1].provider_final_status == ProviderFinalStatus.SUCCESS
+    assert records[-1].error_message_head is None
+
+
+def test_rate_limited_termination_is_provider_infrastructure():
+    """Live defect (2026-08-30): a 429 was recorded as CRASH.
+
+    CRASH is an agent-behaviour ending, so a rate-limited run escaped the
+    "provider infrastructure gets no Y_success" guard entirely.
+    """
+    from trajectory.schema import PROVIDER_INFRASTRUCTURE_TERMINATIONS
+
+    assert TerminationReason.PROVIDER_RATE_LIMITED in PROVIDER_INFRASTRUCTURE_TERMINATIONS
+    assert TerminationReason.CRASH not in PROVIDER_INFRASTRUCTURE_TERMINATIONS
+
+    with pytest.raises(ValidationError):
+        ScientificRunDisposition(
+            session_id="s",
+            termination_reason=TerminationReason.PROVIDER_RATE_LIMITED,
+            valid_for_success_modelling=True,
+        )
+    with pytest.raises(ValidationError):
+        ScientificRunDisposition(
+            session_id="s",
+            termination_reason=TerminationReason.PROVIDER_RATE_LIMITED,
+            valid_for_success_modelling=False,
+            y_success=False,
+        )
+
+    ok = ScientificRunDisposition(
+        session_id="s",
+        termination_reason=TerminationReason.PROVIDER_RATE_LIMITED,
+        valid_for_success_modelling=False,
+    )
+    assert ok.y_success is None
+
+
+def test_every_provider_infrastructure_termination_refuses_a_label():
+    """Guard the whole set, so a future addition cannot silently skip the rule."""
+    from trajectory.schema import PROVIDER_INFRASTRUCTURE_TERMINATIONS
+
+    for reason in PROVIDER_INFRASTRUCTURE_TERMINATIONS:
+        with pytest.raises(ValidationError):
+            ScientificRunDisposition(
+                session_id="s",
+                termination_reason=reason,
+                valid_for_success_modelling=False,
+                y_success=True,
+            )

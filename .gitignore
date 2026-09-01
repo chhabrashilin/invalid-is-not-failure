@@ -81,6 +81,15 @@ artifacts/**
 !artifacts/phase0_5/provider_metadata_requests.json
 !artifacts/phase0_5/availability/
 !artifacts/phase0_5/availability/*.json
+!artifacts/phase0_5/gemini_3_6_flash_call_ledger.json
+!artifacts/phase0_5/scientific_run_dispositions.json
+!artifacts/phase0_5/token_accounting_live_verification.json
+# Phase 0.5 real-agent runs: small JSON provenance only, not evaluator dumps.
+!artifacts/phase0_5/phase05-gemini36-*/
+!artifacts/phase0_5/phase05-gemini36-*/phase05_report.json
+!artifacts/phase0_5/phase05-gemini36-*/feature_audit.json
+!artifacts/phase0_5/phase05-gemini36-*/baseline/
+!artifacts/phase0_5/phase05-gemini36-*/baseline/baseline_check.json
 
 results/**
 !results/.gitkeep

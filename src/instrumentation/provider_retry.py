@@ -65,6 +65,38 @@ def _utcnow() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+#: Ordered redaction rules applied to any provider text before it is persisted.
+#: Each entry is (pattern, replacement); the credential is dropped, the label
+#: that identifies it is kept so the message stays readable.
+_SECRET_PATTERNS = (
+    # Authorization header: redact the whole value, scheme included.
+    (re.compile(r"(?i)(authorization\s*[=:]\s*).*"), r"\g<1><REDACTED>"),
+    (re.compile(r"(?i)(bearer\s+)\S+"), r"\g<1><REDACTED>"),
+    (re.compile(r"(?i)(api[_-]?key\s*[=:]\s*)\S+"), r"\g<1><REDACTED>"),
+    # `?key=<API_KEY>` query parameter used by the Gemini Developer API.
+    (re.compile(r"(?i)(key=)[A-Za-z0-9_\-]{8,}"), r"\g<1><REDACTED>"),
+    # Bare Google API key, wherever it appears.
+    (re.compile(r"AIza[A-Za-z0-9_\-]{10,}"), "<REDACTED>"),
+)
+
+#: Maximum persisted length of a provider error body.
+PROVIDER_MESSAGE_HEAD_LIMIT = 1200
+
+
+def redact_provider_message(text: str, *, limit: int = PROVIDER_MESSAGE_HEAD_LIMIT) -> str:
+    """Bounded, secret-free head of a provider error body.
+
+    Provider errors echo the request URL, which on the Gemini Developer API
+    carries `?key=<API_KEY>`. Persisting the body verbatim would write the
+    credential into the raw trajectory, so every known secret shape is stripped
+    before truncation.
+    """
+    cleaned = text
+    for pattern, replacement in _SECRET_PATTERNS:
+        cleaned = pattern.sub(replacement, cleaned)
+    return cleaned[:limit]
+
+
 def provider_status_code(exc: BaseException) -> int | None:
     """Best-effort status extraction without depending on one SDK exception type."""
     for attr in ("status_code", "http_status", "code"):
@@ -349,6 +381,7 @@ class ProviderRequestExecutor:
                         total_latency_ms=(time.monotonic() - t0) * 1000.0,
                         status_code=status_code,
                         error_type=type(exc).__name__,
+                        error_message_head=redact_provider_message(str(exc)),
                     )
                     self.records.append(record)
                     if status == ProviderFinalStatus.PROVIDER_TIMEOUT:
@@ -367,6 +400,7 @@ class ProviderRequestExecutor:
                     total_latency_ms=(time.monotonic() - t0) * 1000.0,
                     status_code=status_code,
                     error_type=type(exc).__name__,
+                    error_message_head=redact_provider_message(str(exc)),
                 )
                 self.records.append(record)
                 raise NonRetryableProviderError(record) from exc

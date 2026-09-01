@@ -1,0 +1,80 @@
+# Phase 0.5 real-agent configuration.
+#
+# SCOPE: one genuine mini-SWE-agent trajectory against a real SWE-bench_Verified
+# instance with a real provider model, plus independent evaluation, a real
+# checkpoint/restore, and same-condition continuations.
+#
+# Everything here is fixed BEFORE execution. Nothing in this file may be changed
+# in response to observed agent behaviour or observed success/failure.
+
+run_id: phase05-gemini36-001
+benchmark_version: "SWE-bench_Verified (princeton-nlp, 500 instances)"
+harness_version: "phase05-0.1.0"
+
+instance:
+  # Candidate #1 from configs/phase0/phase05_candidates.json, chosen by the
+  # pre-declared seeded-hash rule (success-blind).
+  instance_id: matplotlib__matplotlib-23412
+  repo: matplotlib/matplotlib
+  image: swebench/sweb.eval.x86_64.matplotlib_1776_matplotlib-23412:latest
+  workdir: /testbed
+  selection_rule_file: configs/phase0/phase05_candidates.json
+  base_commit: f06c2c3abdaf4b90285ce5ca7fedbb8ace715911
+  spec_file: configs/phase0/instance_matplotlib__matplotlib-23412.json
+
+model:
+  # Predeclared FINAL Gemini fallback for Phase 0.5. Passed the STEP 1
+  # eligibility probe and the STEP 2 availability gate before this run.
+  model_id: gemini/gemini-3.6-flash
+  # Free tier. Actual spend must be $0.00; the call ledger, not a dollar cap,
+  # is the enforcement mechanism.
+  spend_cap_usd: 0.0
+  temperature: 0.0
+  provider_request_timeout_s: 90.0
+  provider_retry_delays_s: [5.0, 15.0, 30.0]
+  call_ledger: artifacts/phase0_5/gemini_3_6_flash_call_ledger.json
+  global_ledger: artifacts/phase0_5/global_provider_attempts.json
+  max_physical_calls: 100
+
+evaluation:
+  # SWE-bench protocol: restore the hidden tests to base_commit and apply the
+  # official test_patch BEFORE running FAIL_TO_PASS. The agent never sees this.
+  test_patch_file: configs/phase0/test_patch_matplotlib__matplotlib-23412.diff
+  test_files:
+    - lib/matplotlib/tests/test_patches.py
+  test_command: >-
+    source /opt/miniconda3/bin/activate && conda activate testbed && cd /testbed &&
+    python -m pytest -rA -q
+    "lib/matplotlib/tests/test_patches.py::test_dash_offset_patch_draw[png]"
+  timeout_s: 1800
+
+session:
+  # Pre-declared budget cap. The checkpoint is indexed against THIS, never
+  # against the realized trajectory length (Stage 3 section 2.1).
+  step_budget_cap: 12
+  token_budget_cap: 0
+  exec_timeout_s: 300
+  track_fs_diff: true
+
+checkpoint:
+  # ONLINE rule, fixed in advance: 25% of the pre-declared step budget cap
+  # (12 * 0.25 = 3). Independent of eventual success, realized trajectory
+  # length, and any future action.
+  rule: "floor(0.25 * step_budget_cap)"
+  at_step: 3
+  image_repository: phase05/ckpt
+
+fork:
+  # Same-condition continuations from the checkpoint. No compute-budget
+  # intervention in Phase 0.5: every arm gets the identical continuation budget.
+  additional_steps: 4
+  controls:
+    - CONTROL_A
+    - CONTROL_B
+    - CONTROL_C
+  # CONTROL_C runs only if the model-specific ledger comfortably permits it.
+  control_c_min_remaining_calls: 25
+
+output:
+  raw_root: data/raw
+  artifact_root: artifacts/phase0_5

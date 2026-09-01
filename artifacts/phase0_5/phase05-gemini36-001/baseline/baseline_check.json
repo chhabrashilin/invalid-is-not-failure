@@ -1,0 +1,15 @@
+{
+  "kind": "phase0_5_evaluator_baseline_check",
+  "purpose": "FAIL_TO_PASS must FAIL on the unmodified repo",
+  "instance_id": "matplotlib__matplotlib-23412",
+  "checked_at": "2026-08-30T18:50:42.139285+00:00",
+  "success_on_unfixed_repo": false,
+  "tests_passed": null,
+  "tests_failed": 1,
+  "score": 0.0,
+  "raw_artifact_sha256": "9f1c9473a270ff6913fac8a57069d84f7d2c3e2583b5f2ec107cc0fd2d9ad474",
+  "evaluator_discriminates": true,
+  "verdict": "OK",
+  "actual_spend_usd": 0.0,
+  "model_calls": 0
+}

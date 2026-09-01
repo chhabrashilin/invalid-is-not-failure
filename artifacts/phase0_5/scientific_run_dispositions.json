@@ -1,0 +1,133 @@
+{
+  "kind": "phase0_5_scientific_run_dispositions",
+  "created_at": "2026-08-30",
+  "model": "gemini/gemini-3.6-flash",
+  "note": "Raw outcome.json files are immutable and record termination_reason='crash', which is what the harness emitted before PROVIDER_RATE_LIMITED existed. They are NOT rewritten. This post-hoc record carries the corrected classification, derived from provider_calls.jsonl. Both classifications agree on the decisive point: valid_for_success_modelling=False, no Y_success.",
+  "runs": [
+    {
+      "run_id": "phase05-gemini36-001",
+      "session_id": "cont-control_a-bfebd1",
+      "raw_termination_reason_as_recorded": "crash",
+      "corrected_termination_reason": "PROVIDER_RATE_LIMITED",
+      "steps": 0,
+      "logical_model_calls": 1,
+      "successful_calls": 0,
+      "provider_final_statuses": [
+        "RATE_LIMITED"
+      ],
+      "valid_scientific_sample": false,
+      "y_success": null
+    },
+    {
+      "run_id": "phase05-gemini36-001",
+      "session_id": "cont-control_b-cc02ed",
+      "raw_termination_reason_as_recorded": "crash",
+      "corrected_termination_reason": "PROVIDER_RATE_LIMITED",
+      "steps": 0,
+      "logical_model_calls": 1,
+      "successful_calls": 0,
+      "provider_final_statuses": [
+        "RATE_LIMITED"
+      ],
+      "valid_scientific_sample": false,
+      "y_success": null
+    },
+    {
+      "run_id": "phase05-gemini36-001",
+      "session_id": "cont-control_c-46b815",
+      "raw_termination_reason_as_recorded": "crash",
+      "corrected_termination_reason": "PROVIDER_RATE_LIMITED",
+      "steps": 0,
+      "logical_model_calls": 1,
+      "successful_calls": 0,
+      "provider_final_statuses": [
+        "RATE_LIMITED"
+      ],
+      "valid_scientific_sample": false,
+      "y_success": null
+    },
+    {
+      "run_id": "phase05-gemini36-001",
+      "session_id": "parent-1b355d2f",
+      "raw_termination_reason_as_recorded": "crash",
+      "corrected_termination_reason": "PROVIDER_RATE_LIMITED",
+      "steps": 9,
+      "logical_model_calls": 10,
+      "successful_calls": 9,
+      "provider_final_statuses": [
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "RATE_LIMITED"
+      ],
+      "valid_scientific_sample": false,
+      "y_success": null
+    },
+    {
+      "run_id": "phase05-gemini36-002",
+      "session_id": "cont-control_a-3b7b83",
+      "raw_termination_reason_as_recorded": "crash",
+      "corrected_termination_reason": "PROVIDER_RATE_LIMITED",
+      "steps": 0,
+      "logical_model_calls": 1,
+      "successful_calls": 0,
+      "provider_final_statuses": [
+        "RATE_LIMITED"
+      ],
+      "valid_scientific_sample": false,
+      "y_success": null
+    },
+    {
+      "run_id": "phase05-gemini36-002",
+      "session_id": "cont-control_b-cac7c1",
+      "raw_termination_reason_as_recorded": "crash",
+      "corrected_termination_reason": "PROVIDER_RATE_LIMITED",
+      "steps": 0,
+      "logical_model_calls": 1,
+      "successful_calls": 0,
+      "provider_final_statuses": [
+        "RATE_LIMITED"
+      ],
+      "valid_scientific_sample": false,
+      "y_success": null
+    },
+    {
+      "run_id": "phase05-gemini36-002",
+      "session_id": "cont-control_c-2547a7",
+      "raw_termination_reason_as_recorded": "crash",
+      "corrected_termination_reason": "PROVIDER_RATE_LIMITED",
+      "steps": 0,
+      "logical_model_calls": 1,
+      "successful_calls": 0,
+      "provider_final_statuses": [
+        "RATE_LIMITED"
+      ],
+      "valid_scientific_sample": false,
+      "y_success": null
+    },
+    {
+      "run_id": "phase05-gemini36-002",
+      "session_id": "parent-a4ddbc72",
+      "raw_termination_reason_as_recorded": "crash",
+      "corrected_termination_reason": "PROVIDER_RATE_LIMITED",
+      "steps": 4,
+      "logical_model_calls": 5,
+      "successful_calls": 4,
+      "provider_final_statuses": [
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "RATE_LIMITED"
+      ],
+      "valid_scientific_sample": false,
+      "y_success": null
+    }
+  ]
+}

@@ -1087,3 +1087,187 @@ different infrastructure reasons — Gemini 3.7 Flash on transient 503
 unavailability, Gemini 2.5 Flash on permanent new-user ineligibility. A
 research-level model/provider decision is required before Phase 0.5 can produce
 its first valid trajectory. Phase 1A remains stopped and undesigned.
+
+## 2026-08-30 / 2026-09-01 — Phase 0.5 (cont. 6): final Gemini fallback 3.6 Flash
+
+Continuation from `be0fb9c`. The predeclared final Gemini fallback passed both
+its eligibility probe and its availability gate, and a real mini-SWE-agent
+trajectory ran against a real SWE-bench instance for the first time in this
+project. Both real runs were then killed by free-tier rate limiting, so neither
+is a valid scientific sample. Every earlier artifact is retained unmodified.
+
+### Provenance constants
+
+```text
+PHASE_0_5_MODEL_1 = gemini/gemini-3.7-flash
+PHASE_0_5_MODEL_1_REJECTION = pre-data 503 availability gate failure
+PHASE_0_5_MODEL_2 = gemini/gemini-2.5-flash
+PHASE_0_5_MODEL_2_REJECTION = pre-data new-user generateContent eligibility restriction
+PHASE_0_5_MODEL_3 = gemini/gemini-3.6-flash
+PHASE_0_5_MODEL_3_PREDECLARED_BEFORE_SCIENTIFIC_DATA = true
+PHASE_0_5_MODEL_3_IS_FINAL_GEMINI_FALLBACK = true
+PHASE_0_5_36_FLASH_MAX_PHYSICAL_CALLS = 100
+```
+
+All three models were predeclared before any SWE-bench behaviour was observed.
+No model was chosen or rejected for benchmark performance.
+
+### Official verification (2026-08-30, before any 3.6 call)
+
+`gemini-3.6-flash` is listed Stable on the models page and available on the
+Developer API; the deprecations page gives release 2026-07-21 and no announced
+shutdown; the pricing page gives Free Tier input and output free of charge.
+Offline: LiteLLM 1.98.0 resolves `gemini/gemini-3.6-flash` to
+`("gemini-3.6-flash","gemini")` via `GEMINI_API_KEY`, and mini-swe-agent 2.4.6 is
+installed with both documented hook points intact. Following the previous
+milestone's lesson, `ListModels` was not treated as evidence of eligibility.
+
+### Eligibility probe and availability gate — both passed
+
+One live `generateContent` request returned HTTP 200 `OK` in 2 616 ms (5 in /
+1 out tokens): the account is ELIGIBLE. The gate then ran 5 logical probes at
+15 s spacing: **5/5 eventually successful, 5/5 on first attempt**, zero 503s,
+zero timeouts, zero 429s, zero forbidden errors, latency median 14 578 ms and max
+38 953 ms, 94 model-specific slots remaining. Gate decision **PROCEED**.
+
+### Real trajectory — real behaviour, but not a valid sample
+
+Before spending any model call, an evaluator discrimination check confirmed the
+harness is not trivially passing: on the unmodified repo the official
+`test_patch` applies cleanly and `test_dash_offset_patch_draw[png]` fails.
+
+Run 001 (`parent-1b355d2f`) completed 9 steps / 10 logical calls in 502 s, then
+the 10th call returned 429. All three same-condition controls restored from the
+checkpoint correctly and were each rate-limited on their first call. Because the
+parent was invalid *solely* due to provider infrastructure, the standing
+allowance for one same-configuration rerun was used: run 002 (`parent-a4ddbc72`)
+was identical in task, prompt, scaffold, model, temperature and budgets, with
+only `run_id` changed so run 001's artifacts stayed intact. It failed the same
+way after 4 steps, and its three controls were likewise rate-limited immediately.
+
+In both runs the agent spent every step exploring (`git grep`, `sed -n`,
+`git log -S`) and never edited a file or ran a test before the quota stopped it.
+All 8 sessions are `VALID_SCIENTIFIC_SAMPLE=false` with **no `Y_success`**.
+
+### Root cause: the free tier is 20 requests per minute
+
+The verbatim 429 body — recoverable only after the D5 fix below — reads:
+
+> `Quota exceeded for metric:`
+> `generativelanguage.googleapis.com/generate_content_free_tier_requests,`
+> `limit: 20, model: gemini-3.6-flash. Please retry in 6.531751641s.`
+
+with `status: RESOURCE_EXHAUSTED` and retry delays of 1.1–9.6 s across the
+observed failures. A probe two minutes later succeeded, so this is a short
+rolling window, not a daily cap. The predeclared policy ("429 → surface
+immediately, never retry") converts a sub-10-second infrastructure pause into a
+terminated, unusable run. That policy and the free tier are incompatible, and
+resolving it is a research-level decision, not one to take mid-run.
+
+### Three genuinely new live defects, all fixed with regression tests
+
+**D5 — provider error bodies were not persisted.** The 429 recorded only
+`status_code` and `error_type`, making the quota type undiagnosable after exit.
+Added a bounded, secret-redacted `error_message_head` to `ProviderCallRecord`.
+Gemini errors echo the request URL, which carries `?key=<API_KEY>`, so redaction
+is mandatory; a test asserts the credential never reaches disk while the quota
+text survives. This fix produced the diagnosis above on the very next run.
+
+**D6 — a 429 escaped the "no `Y_success`" guard.** Rate limiting mapped to
+`TerminationReason.CRASH`, an agent-behaviour ending, so the validator blocking
+labels on provider-infrastructure runs never applied. Added
+`PROVIDER_RATE_LIMITED` plus a `PROVIDER_INFRASTRUCTURE_TERMINATIONS` set the
+validator iterates, and a test asserting every member refuses a label so a future
+addition cannot silently skip the rule.
+
+**D7 — output-token accounting was wrong by ~200x.** Every step recorded
+`completion_tokens=1`. mini-swe-agent nests the provider response under
+`extra["response"]`, so the adapter's `extra["usage"]` lookup always missed and
+*both* token counts fell back to the crude 4-chars/token estimator; for a
+tool-calling model the action is in `tool_calls` and `content` is `None`, so the
+estimator floored at 1. Stage 3 §11 makes tokens THE resource unit, so this
+corrupted the core measure. Fixed to read nested provider usage with an explicit
+`None` check, so a genuine reported `0` is preserved rather than replaced by a
+guess — a bug the new tests caught in the first version of the fix. Verified
+live: real usage now extracted (56 / 46 tokens) from a response whose `content`
+is `None` and which carries no top-level `usage` key.
+
+Raw `outcome.json` files are immutable and still record `crash`; they were not
+rewritten. The corrected classification lives in
+`artifacts/phase0_5/scientific_run_dispositions.json`. Both agree on the decisive
+point: invalid, no label. Token counts in the two runs remain estimates and are
+reported as such rather than retro-corrected.
+
+### Feature audit — passes on real data
+
+All ten required features plus a cumulative-consistency check PASS on both
+trajectories. `a_budget_fraction_consumed` (0.75 / 0.333) is computed against the
+pre-declared cap of 12, never the realized length, and the live recorder counters
+match offline recomputation exactly. Honest limitation: because the agent never
+edited a file or ran a test before being rate-limited, the four test-detection
+features and `b_repo_files_changed` are correctly empty/zero rather than
+positively exercised on live data; their non-trivial paths are covered by unit
+tests and by a zero-API deterministic container run that recorded
+`repo_files_modified=1` after a real edit. Nothing was fabricated.
+
+### Checkpoint / restore works; `docker commit` is the bottleneck
+
+The online rule `floor(0.25 * step_budget_cap)` fired at step 3 in both runs,
+independent of success, realized length and future actions. Snapshots carry
+immutable ids and message-history hashes, and restore into a fresh container
+succeeded 6/6 times in 0.5–1.7 s.
+
+**Checkpoint cost: 404.1 s and 461.8 s** on the 10.6 GB SWE-bench image — two
+orders of magnitude above every other pipeline step. Stage 3 §7.2 flagged the
+concern citing 2510.05556; this measures it on our own stack.
+
+### Divergence and K6
+
+Not computable as designed: 0 of 6 continuations were valid. One flagged
+preliminary observation, outside the predeclared design: the two parent runs are
+same-condition replications from an identical initial state at
+`temperature=0.0`, and they diverged at **action index 0**
+(`git grep -n …` vs `grep -rn …`), with a normalized command-sequence match
+fraction of 0.0000. n=2 and parent-level, so it settles nothing, but it bears
+directly on K6 and on Phase 1A replicate sizing.
+
+**K6_STATUS = UNTESTED.** Only valid continuations may inform K6 and there are
+none; `PRELIMINARY_CONCERN` would over-read the observation above.
+
+### Accounting
+
+`GEMINI_3_6_MODEL_SPECIFIC_ATTEMPTS` = **30 / 100** (70 remaining), by scope:
+15 parent, 6 controls, 5 gate, 1 eligibility, 1 quota diagnostic, 2 token
+verification. `GLOBAL_PROVIDER_ATTEMPTS` = 44. The 12 historical Gemini 3.7 and
+2 Gemini 2.5 attempts are preserved and do not count against the 3.6 allowance.
+Separately disclosed: 6 non-generative `ListModels` metadata GETs. All ledger
+writes are append-only.
+
+**Actual spend: $0.00.** Free tier throughout; no billing, paid route, priority
+inference or fallback provider was ever enabled, and the physical-call ledger —
+not LiteLLM's nominal pricing — is the enforcement mechanism. Informational only
+and NOT ACTUAL SPEND: nominal paid rates are $0.75/M input and $3.75/M output,
+which is what the per-step `estimated_cost_usd` values represent.
+
+### Tests
+
+Full suite **128 passed, 0 failed** (117 at `be0fb9c`), including 11 new
+regression tests for D5–D7. Oracle-leakage, evaluation separation,
+official-`test_patch`, provider/semantic separation, immutable raw data and
+physical-attempt accounting all remain green.
+
+### Decision: MODIFY
+
+Met: eligibility, availability gate, feature audit on real data, a discriminating
+independent evaluator, working checkpoint/restore, oracle-leakage tests,
+provider/semantic separation, 30 ≤ 100 attempts, $0.00 spend.
+
+Not met: no valid real trajectory and 0 valid same-condition continuations, both
+from the same cause. Replay stability is therefore unverified rather than
+demonstrated.
+
+Blockers before Phase 1A: (1) the predeclared no-retry-on-429 rule is
+incompatible with a 20 RPM free tier whose own response asks for a ~1–10 s retry;
+(2) 404–462 s per checkpoint makes Phase 1A sizing infeasible as designed;
+(3) the temperature-0 divergence at action 0 needs the real fork design to
+resolve. Phase 1A remains stopped and undesigned.

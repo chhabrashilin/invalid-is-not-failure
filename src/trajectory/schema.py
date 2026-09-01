@@ -122,6 +122,21 @@ class TerminationReason(str, Enum):
     CRASH = "crash"
     PROVIDER_UNAVAILABLE = "PROVIDER_UNAVAILABLE"
     PROVIDER_TIMEOUT = "PROVIDER_TIMEOUT"
+    #: Provider refused on quota (HTTP 429). Infrastructure, not agent
+    #: behaviour: added after the 2026-08-30 live run, where a rate-limited
+    #: trajectory was recorded as CRASH and so escaped the no-Y_success guard.
+    PROVIDER_RATE_LIMITED = "PROVIDER_RATE_LIMITED"
+
+
+#: Terminations caused by provider infrastructure rather than agent behaviour.
+#: A run ending this way is never a scientific sample and never gets Y_success.
+PROVIDER_INFRASTRUCTURE_TERMINATIONS = frozenset(
+    {
+        TerminationReason.PROVIDER_UNAVAILABLE,
+        TerminationReason.PROVIDER_TIMEOUT,
+        TerminationReason.PROVIDER_RATE_LIMITED,
+    }
+)
 
 
 class ProviderFinalStatus(str, Enum):
@@ -303,6 +318,11 @@ class ProviderCallRecord(BaseModel):
     total_latency_ms: NonNegativeFloat
     status_code: int | None = None
     error_type: str | None = None
+    #: Bounded, secret-redacted head of the provider's error body. Needed to
+    #: tell an RPM burst limit from a daily quota after the fact; without it a
+    #: 429 is undiagnosable once the process exits. Infrastructure metadata
+    #: only -- it is not part of StepRecord and never reaches features.
+    error_message_head: str | None = None
 
 
 class EnvironmentSnapshotMetadata(_OnlineSafe):
@@ -386,13 +406,11 @@ class ScientificRunDisposition(_PostHoc):
 
     @model_validator(mode="after")
     def provider_outage_has_no_label(self) -> "ScientificRunDisposition":
-        if self.termination_reason in (
-            TerminationReason.PROVIDER_UNAVAILABLE,
-            TerminationReason.PROVIDER_TIMEOUT,
-        ):
+        if self.termination_reason in PROVIDER_INFRASTRUCTURE_TERMINATIONS:
             if self.valid_for_success_modelling or self.y_success is not None:
                 raise ValueError(
-                    "provider infrastructure termination is invalid and must have no Y_success"
+                    f"{self.termination_reason.value} is provider infrastructure: "
+                    "the run is invalid and must have no Y_success"
                 )
         return self
 

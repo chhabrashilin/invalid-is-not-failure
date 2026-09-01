@@ -1,0 +1,16 @@
+{
+  "kind": "phase0_5_gemini_3_6_flash_quota_diagnostic",
+  "model": "gemini/gemini-3.6-flash",
+  "started_at": "2026-08-30T19:01:22.271640+00:00",
+  "physical_attempts": 1,
+  "purpose": "identify RPM vs RPD quota from the verbatim 429 body",
+  "outcome": "SUCCESS",
+  "latency_ms": 1234.9391000025207,
+  "text": "OK",
+  "quota_state": "RECOVERED - quota window has reset",
+  "completed_at": "2026-08-30T19:01:23.506547+00:00",
+  "global_provider_attempts": 34,
+  "model_specific_attempts_used": 20,
+  "model_specific_attempts_remaining": 80,
+  "actual_spend_usd": 0.0
+}

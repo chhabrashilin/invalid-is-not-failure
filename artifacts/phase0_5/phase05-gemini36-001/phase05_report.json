@@ -1,0 +1,158 @@
+{
+  "kind": "phase0_5_real_agent_run",
+  "run_id": "phase05-gemini36-001",
+  "started_at": "2026-08-30T18:51:27.951513+00:00",
+  "config_file": "configs/phase0/phase05_matplotlib.yaml",
+  "model": "gemini/gemini-3.6-flash",
+  "instance_id": "matplotlib__matplotlib-23412",
+  "actual_spend_usd": 0.0,
+  "ledger_at_start": {
+    "model_specific_used": 6,
+    "model_specific_remaining": 94,
+    "global_provider_attempts": 20
+  },
+  "parent": {
+    "session_id": "parent-1b355d2f",
+    "raw_dir": "data\\raw\\phase05-gemini36-001\\parent-1b355d2f",
+    "wall_time_s": 502.2030000000086,
+    "steps": 9,
+    "exit_status": "",
+    "termination_reason": "crash",
+    "valid_scientific_sample": false,
+    "exception": "NonRetryableProviderError: non-retryable provider error: RATE_LIMITED (RateLimitError)",
+    "patch_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "patch_bytes": 0,
+    "provider": {
+      "provider_physical_attempts": 10,
+      "provider_503_count": 0,
+      "provider_timeout_count": 0,
+      "provider_retry_delay_total_s": 0.0,
+      "logical_model_calls": 10,
+      "provider_final_statuses": [
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "SUCCESS",
+        "RATE_LIMITED"
+      ]
+    },
+    "agent_cost_reported_usd": 0.037233224999999995,
+    "evaluation": {
+      "y_success": null,
+      "reason": "VALID_SCIENTIFIC_SAMPLE=false; no label assigned"
+    }
+  },
+  "checkpoint": {
+    "taken": true,
+    "rule": "floor(0.25 * step_budget_cap)",
+    "at_step": 3,
+    "snapshot_id": "ckpt-ca518c92",
+    "image_ref": "phase05/ckpt:b1c1f830b050",
+    "image_id": "sha256:995fc930a25590dcff390e8d9f085315df4ff08210b85175dd3e5572c64957c2",
+    "message_history_hash": "ff865bd42c0ffce781641103366b2a27c002e325231c9afbd16eac7c9f600a0e",
+    "checkpoint_time_s": 404.0939999999973
+  },
+  "controls": [
+    {
+      "arm": "CONTROL_A",
+      "continuation_id": "cont-control_a-bfebd1",
+      "raw_dir": "data\\raw\\phase05-gemini36-001\\cont-control_a-bfebd1",
+      "restore_time_s": 0.9850000000005821,
+      "fork_time_s": 0.20300000000861473,
+      "steps": 0,
+      "termination_reason": "crash",
+      "valid_scientific_sample": false,
+      "exception": "NonRetryableProviderError: non-retryable provider error: RATE_LIMITED (RateLimitError)",
+      "patch_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "patch_bytes": 0,
+      "provider": {
+        "provider_physical_attempts": 1,
+        "provider_503_count": 0,
+        "provider_timeout_count": 0,
+        "provider_retry_delay_total_s": 0.0,
+        "logical_model_calls": 1,
+        "provider_final_statuses": [
+          "RATE_LIMITED"
+        ]
+      },
+      "steps_detail": [],
+      "evaluation": {
+        "y_success": null,
+        "reason": "VALID_SCIENTIFIC_SAMPLE=false; no label assigned"
+      }
+    },
+    {
+      "arm": "CONTROL_B",
+      "continuation_id": "cont-control_b-cc02ed",
+      "raw_dir": "data\\raw\\phase05-gemini36-001\\cont-control_b-cc02ed",
+      "restore_time_s": 0.45300000000861473,
+      "fork_time_s": 0.1879999999946449,
+      "steps": 0,
+      "termination_reason": "crash",
+      "valid_scientific_sample": false,
+      "exception": "NonRetryableProviderError: non-retryable provider error: RATE_LIMITED (RateLimitError)",
+      "patch_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "patch_bytes": 0,
+      "provider": {
+        "provider_physical_attempts": 1,
+        "provider_503_count": 0,
+        "provider_timeout_count": 0,
+        "provider_retry_delay_total_s": 0.0,
+        "logical_model_calls": 1,
+        "provider_final_statuses": [
+          "RATE_LIMITED"
+        ]
+      },
+      "steps_detail": [],
+      "evaluation": {
+        "y_success": null,
+        "reason": "VALID_SCIENTIFIC_SAMPLE=false; no label assigned"
+      }
+    },
+    {
+      "arm": "CONTROL_C",
+      "continuation_id": "cont-control_c-46b815",
+      "raw_dir": "data\\raw\\phase05-gemini36-001\\cont-control_c-46b815",
+      "restore_time_s": 0.5149999999994179,
+      "fork_time_s": 0.21799999999348074,
+      "steps": 0,
+      "termination_reason": "crash",
+      "valid_scientific_sample": false,
+      "exception": "NonRetryableProviderError: non-retryable provider error: RATE_LIMITED (RateLimitError)",
+      "patch_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "patch_bytes": 0,
+      "provider": {
+        "provider_physical_attempts": 1,
+        "provider_503_count": 0,
+        "provider_timeout_count": 0,
+        "provider_retry_delay_total_s": 0.0,
+        "logical_model_calls": 1,
+        "provider_final_statuses": [
+          "RATE_LIMITED"
+        ]
+      },
+      "steps_detail": [],
+      "evaluation": {
+        "y_success": null,
+        "reason": "VALID_SCIENTIFIC_SAMPLE=false; no label assigned"
+      }
+    }
+  ],
+  "divergence": [],
+  "valid_continuations": 0,
+  "ledger_at_end": {
+    "model_specific_used": 19,
+    "model_specific_remaining": 81,
+    "global_provider_attempts": 33,
+    "max_physical_calls": 100
+  },
+  "pipeline_wall_time_s": 509.4219999999914,
+  "completed_at": "2026-08-30T18:59:57.380967+00:00",
+  "artifact_bytes": 4417,
+  "raw_bytes": 24449
+}

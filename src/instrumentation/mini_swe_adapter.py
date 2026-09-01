@@ -145,16 +145,38 @@ class InstrumentedAgent(DefaultAgent):
         if exit_status is None:
             exit_status = (out.get("extra", {}) or {}).get("returncode") if isinstance(out, dict) else None
 
-        usage = extra.get("usage", {}) or {}
+        # Provider-reported usage is authoritative (Stage 3 section 11: tokens are
+        # THE resource unit). Upstream nests the raw response under
+        # extra["response"], so its `usage` block is where the real counts live;
+        # extra["usage"] is only present for models that surface it directly.
+        # Falling through to the crude estimator silently under-counted
+        # tool-calling responses by ~200x (live defect, 2026-08-30): the action
+        # is carried in tool_calls, so `content` is None and the estimator
+        # floors at 1 token per step.
+        usage = extra.get("usage") or {}
+        if not usage:
+            usage = (extra.get("response") or {}).get("usage") or {}
+        def _reported(*keys: str) -> int | None:
+            """First key the provider actually set. A reported 0 is a real
+            value and must not fall through to the next key or the estimator."""
+            for key in keys:
+                value = usage.get(key)
+                if value is not None:
+                    return int(value)
+            return None
+
+        reported_prompt = _reported("prompt_tokens", "input_tokens")
+        reported_completion = _reported("completion_tokens", "output_tokens")
+        self._token_usage_is_estimated = reported_completion is None
         prompt_tokens = int(
-            usage.get("prompt_tokens")
-            or usage.get("input_tokens")
-            or estimate_tokens("".join(str(m.get("content", "")) for m in self.messages))
+            reported_prompt
+            if reported_prompt is not None
+            else estimate_tokens("".join(str(m.get("content", "")) for m in self.messages))
         )
         completion_tokens = int(
-            usage.get("completion_tokens")
-            or usage.get("output_tokens")
-            or estimate_tokens(str(message.get("content", "")))
+            reported_completion
+            if reported_completion is not None
+            else estimate_tokens(str(message.get("content") or ""))
         )
         context_tokens = estimate_tokens(
             "".join(str(m.get("content", "")) for m in self.messages)

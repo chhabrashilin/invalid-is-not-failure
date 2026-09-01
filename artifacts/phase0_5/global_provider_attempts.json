@@ -1,7 +1,7 @@
 {
   "phase": "0.5",
   "accounting_unit": "physical_api_attempt",
-  "global_provider_attempts": 14,
+  "global_provider_attempts": 44,
   "historical_attempts_before_gemini_2_5_flash": 12,
   "events": [
     {
@@ -15,7 +15,187 @@
       "scope": "gemini-2.5-404-root-cause-diagnostic",
       "model_id": "gemini/gemini-2.5-flash",
       "ts": "2026-08-30T16:54:58.886982+00:00"
+    },
+    {
+      "ordinal": 15,
+      "scope": "gemini-3.6-eligibility-probe",
+      "model_id": "gemini/gemini-3.6-flash",
+      "ts": "2026-08-30T18:10:20.296571+00:00"
+    },
+    {
+      "ordinal": 16,
+      "scope": "gemini-3.6-availability-probe",
+      "model_id": "gemini/gemini-3.6-flash",
+      "ts": "2026-08-30T18:11:28.661268+00:00"
+    },
+    {
+      "ordinal": 17,
+      "scope": "gemini-3.6-availability-probe",
+      "model_id": "gemini/gemini-3.6-flash",
+      "ts": "2026-08-30T18:12:22.658040+00:00"
+    },
+    {
+      "ordinal": 18,
+      "scope": "gemini-3.6-availability-probe",
+      "model_id": "gemini/gemini-3.6-flash",
+      "ts": "2026-08-30T18:12:42.232492+00:00"
+    },
+    {
+      "ordinal": 19,
+      "scope": "gemini-3.6-availability-probe",
+      "model_id": "gemini/gemini-3.6-flash",
+      "ts": "2026-08-30T18:13:19.847069+00:00"
+    },
+    {
+      "ordinal": 20,
+      "scope": "gemini-3.6-availability-probe",
+      "model_id": "gemini/gemini-3.6-flash",
+      "ts": "2026-08-30T18:13:35.886692+00:00"
+    },
+    {
+      "ordinal": 21,
+      "scope": "parent",
+      "model_id": "gemini/gemini-3.6-flash",
+      "ts": "2026-08-30T18:51:29.824437+00:00"
+    },
+    {
+      "ordinal": 22,
+      "scope": "parent",
+      "model_id": "gemini/gemini-3.6-flash",
+      "ts": "2026-08-30T18:51:36.243587+00:00"
+    },
+    {
+      "ordinal": 23,
+      "scope": "parent",
+      "model_id": "gemini/gemini-3.6-flash",
+      "ts": "2026-08-30T18:51:39.953956+00:00"
+    },
+    {
+      "ordinal": 24,
+      "scope": "parent",
+      "model_id": "gemini/gemini-3.6-flash",
+      "ts": "2026-08-30T18:59:12.417153+00:00"
+    },
+    {
+      "ordinal": 25,
+      "scope": "parent",
+      "model_id": "gemini/gemini-3.6-flash",
+      "ts": "2026-08-30T18:59:20.823966+00:00"
+    },
+    {
+      "ordinal": 26,
+      "scope": "parent",
+      "model_id": "gemini/gemini-3.6-flash",
+      "ts": "2026-08-30T18:59:31.122606+00:00"
+    },
+    {
+      "ordinal": 27,
+      "scope": "parent",
+      "model_id": "gemini/gemini-3.6-flash",
+      "ts": "2026-08-30T18:59:35.673541+00:00"
+    },
+    {
+      "ordinal": 28,
+      "scope": "parent",
+      "model_id": "gemini/gemini-3.6-flash",
+      "ts": "2026-08-30T18:59:40.181253+00:00"
+    },
+    {
+      "ordinal": 29,
+      "scope": "parent",
+      "model_id": "gemini/gemini-3.6-flash",
+      "ts": "2026-08-30T18:59:45.859896+00:00"
+    },
+    {
+      "ordinal": 30,
+      "scope": "parent",
+      "model_id": "gemini/gemini-3.6-flash",
+      "ts": "2026-08-30T18:59:51.021754+00:00"
+    },
+    {
+      "ordinal": 31,
+      "scope": "cont-control_a-bfebd1",
+      "model_id": "gemini/gemini-3.6-flash",
+      "ts": "2026-08-30T18:59:53.853937+00:00"
+    },
+    {
+      "ordinal": 32,
+      "scope": "cont-control_b-cc02ed",
+      "model_id": "gemini/gemini-3.6-flash",
+      "ts": "2026-08-30T18:59:55.192013+00:00"
+    },
+    {
+      "ordinal": 33,
+      "scope": "cont-control_c-46b815",
+      "model_id": "gemini/gemini-3.6-flash",
+      "ts": "2026-08-30T18:59:56.532584+00:00"
+    },
+    {
+      "ordinal": 34,
+      "scope": "gemini-3.6-quota-diagnostic",
+      "model_id": "gemini/gemini-3.6-flash",
+      "ts": "2026-08-30T19:01:22.265267+00:00"
+    },
+    {
+      "ordinal": 35,
+      "scope": "parent",
+      "model_id": "gemini/gemini-3.6-flash",
+      "ts": "2026-08-30T19:06:21.877813+00:00"
+    },
+    {
+      "ordinal": 36,
+      "scope": "parent",
+      "model_id": "gemini/gemini-3.6-flash",
+      "ts": "2026-08-30T19:06:31.579480+00:00"
+    },
+    {
+      "ordinal": 37,
+      "scope": "parent",
+      "model_id": "gemini/gemini-3.6-flash",
+      "ts": "2026-08-30T19:07:04.914362+00:00"
+    },
+    {
+      "ordinal": 38,
+      "scope": "parent",
+      "model_id": "gemini/gemini-3.6-flash",
+      "ts": "2026-08-30T19:15:44.461630+00:00"
+    },
+    {
+      "ordinal": 39,
+      "scope": "parent",
+      "model_id": "gemini/gemini-3.6-flash",
+      "ts": "2026-08-30T19:15:50.543758+00:00"
+    },
+    {
+      "ordinal": 40,
+      "scope": "cont-control_a-3b7b83",
+      "model_id": "gemini/gemini-3.6-flash",
+      "ts": "2026-08-30T19:15:53.614779+00:00"
+    },
+    {
+      "ordinal": 41,
+      "scope": "cont-control_b-cac7c1",
+      "model_id": "gemini/gemini-3.6-flash",
+      "ts": "2026-08-30T19:15:56.336367+00:00"
+    },
+    {
+      "ordinal": 42,
+      "scope": "cont-control_c-2547a7",
+      "model_id": "gemini/gemini-3.6-flash",
+      "ts": "2026-08-30T19:15:59.008171+00:00"
+    },
+    {
+      "ordinal": 43,
+      "scope": "token-fix-verification",
+      "model_id": "gemini/gemini-3.6-flash",
+      "ts": "2026-08-31T06:53:35.794537+00:00"
+    },
+    {
+      "ordinal": 44,
+      "scope": "token-fix-verification",
+      "model_id": "gemini/gemini-3.6-flash",
+      "ts": "2026-09-01T21:26:24.522493+00:00"
     }
   ],
-  "updated_at": "2026-08-30T16:54:58.886982+00:00"
+  "updated_at": "2026-09-01T21:26:24.523002+00:00"
 }

@@ -260,3 +260,80 @@ def test_preflight_user_scope_adoption_returns_name_not_value():
            / "scripts/phase0/preflight_gemini.py").read_text(encoding="utf-8")
     assert "return name" in src, "adoption must return the name"
     assert "return value" not in src, "adoption must never return the value"
+
+
+# ---------------------------------------------------------------------------
+# Live defect (2026-08-30): the real Phase 0.5 run recorded completion_tokens=1
+# for every step. mini-swe-agent nests the provider response under
+# extra["response"], so extra["usage"] was always empty and BOTH token counts
+# silently fell back to the crude 4-chars/token estimator. For a tool-calling
+# model the action lives in tool_calls and `content` is None, so the estimator
+# floored at 1 token per step -- a ~200x undercount of THE resource unit.
+# ---------------------------------------------------------------------------
+
+
+def _record_usage(extra_usage: dict | None, response_usage: dict | None, content):
+    """Drive the adapter's recording path with a given usage shape."""
+    rec = TrajectoryRecorder("sess-usage", start_monotonic=0.0)
+    instr = InstrumentationContext(recorder=rec, spend_cap_usd=0.0, track_repo_changes=False)
+    agent = InstrumentedAgent(
+        DeterministicModel(outputs=[make_output("x", [{"command": "echo hi"}], cost=0.0)]),
+        LocalEnvironment(),
+        instrumentation=instr,
+        step_limit=1,
+        system_template=SYSTEM_TEMPLATE,
+        instance_template=INSTANCE_TEMPLATE,
+    )
+    agent.messages = [{"role": "user", "content": "task"}]
+    extra: dict = {"actions": [{"command": "echo hi"}]}
+    if extra_usage is not None:
+        extra["usage"] = extra_usage
+    if response_usage is not None:
+        extra["response"] = {"usage": response_usage}
+    message = {"role": "assistant", "content": content, "extra": extra}
+    agent._record(message, [{"content": "hi", "returncode": 0}])
+    return rec.steps[-1]
+
+
+def test_provider_reported_usage_is_read_from_nested_response():
+    """The real counts live at extra['response']['usage']."""
+    step = _record_usage(
+        None, {"prompt_tokens": 1656, "completion_tokens": 222, "total_tokens": 1878}, None
+    )
+    assert step.prompt_tokens == 1656
+    assert step.completion_tokens == 222, (
+        "provider-reported completion tokens must win over the estimator"
+    )
+
+
+def test_tool_call_response_with_null_content_is_not_counted_as_one_token():
+    """Regression: content=None + tool_calls must not floor at 1 token."""
+    step = _record_usage(
+        None, {"prompt_tokens": 900, "completion_tokens": 175, "total_tokens": 1075}, None
+    )
+    assert step.completion_tokens == 175
+    assert step.completion_tokens != 1
+
+
+def test_top_level_usage_still_takes_precedence_when_present():
+    step = _record_usage(
+        {"prompt_tokens": 10, "completion_tokens": 20},
+        {"prompt_tokens": 999, "completion_tokens": 999},
+        "text",
+    )
+    assert (step.prompt_tokens, step.completion_tokens) == (10, 20)
+
+
+def test_estimator_is_used_only_when_the_provider_reports_nothing():
+    step = _record_usage(None, None, "some assistant text that is long enough")
+    assert step.completion_tokens >= 1
+    assert step.prompt_tokens >= 1
+
+
+def test_zero_completion_tokens_is_preserved_not_replaced_by_estimator():
+    """A genuine 0 must survive; `or` chaining used to turn it into a guess."""
+    step = _record_usage(
+        None, {"prompt_tokens": 500, "completion_tokens": 0, "total_tokens": 500}, None
+    )
+    assert step.completion_tokens == 0
+    assert step.prompt_tokens == 500
