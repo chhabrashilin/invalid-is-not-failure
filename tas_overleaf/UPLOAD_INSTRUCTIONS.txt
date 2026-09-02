@@ -1,0 +1,47 @@
+OVERLEAF UPLOAD -- TAS 2026 anonymous short paper
+=================================================
+
+1. Download the official AAAI-26 author kit:
+      https://aaai.org/authorkit26/
+   (AAAI-27 kit also accepted by TAS; if you use it, change the two
+   "aaai26" strings in main.tex to "aaai27".)
+
+2. Overleaf -> New Project -> Upload Project -> upload the AAAI author kit ZIP.
+   This gives you aaai26.sty and aaai26.bst in the project root.
+
+3. Into that same project, upload these two files from tas_overleaf/,
+   overwriting the kit's sample files if prompted:
+      main.tex
+      references.bib
+
+4. Menu -> Compiler: pdfLaTeX.  Menu -> Main document: main.tex.
+   Click Recompile. Overleaf runs bibtex automatically; if references show
+   as [?], hit Recompile once more.
+
+5. ONLY IF it fails with an error about \affiliations:
+   open main.tex and uncomment the line   %\affiliations{}   (just below
+   \author{Anonymous Submission}). Recompile.
+
+6. Download PDF and submit to EasyChair.
+
+NOTES
+-----
+- No figure files are needed. Figure 1 is drawn inline with TikZ.
+- Do not add \usepackage{geometry}, fullpage, hyperref, titlesec or caption;
+  the AAAI style rejects them.
+- Keep letterpaper. Do not add page numbers.
+- The paper is anonymous: no authors, affiliations, acknowledgements,
+  repository URLs, or institution names appear anywhere in the source.
+
+PACKAGES REQUIRED (all standard in Overleaf's TeX Live)
+-------------------------------------------------------
+  aaai26     -- from the official author kit (NOT on CTAN; you must upload it)
+  times, helvet, courier
+  url, graphicx, natbib
+  booktabs
+  tikz  + libraries: arrows.meta, positioning
+
+BIBLIOGRAPHY
+------------
+  \bibliographystyle{aaai26}  -- aaai26.bst ships with the author kit.
+  8 references, all cited; no uncited entries; no broken keys.
