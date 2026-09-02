@@ -34,8 +34,8 @@
 % Numbered sections so the in-text cross references resolve.
 \setcounter{secnumdepth}{2}
 
-\title{Measurement Integrity for Trustworthy Agentic Systems:\\
-Failure Modes and a Reproducible Evaluation Architecture}
+\title{Cross-Layer Confounds in Agent Evaluation:\\
+Measurement Integrity for Trustworthy Agentic Systems}
 
 % ANONYMOUS SUBMISSION. Author and affiliation blocks are intentionally absent.
 % If the author kit version in use requires an \affiliations block to compile,
@@ -47,62 +47,69 @@ Failure Modes and a Reproducible Evaluation Architecture}
 \maketitle
 
 \begin{abstract}
-Evaluating a multi-step agent is not one measurement but several, layered
-together: provider inference, shell and tool execution, a mutable environment,
-trajectory logging, checkpoint and replay, and an offline benchmark evaluator.
-Each boundary between these layers can fail silently, and a silent failure does
-not announce itself as an error --- it produces a plausible number. We report
-five controlled failure cases from an instrumented coding-agent harness in which
-a defensible-looking measurement choice corrupts behavioural features,
-ground-truth task outcomes, or resource accounting. In one, omitting the
-benchmark's official test patch makes the target test uncollectable, so the
-evaluator reports no test result at all; in another, a failing test piped into
-\texttt{tail} is recorded as a successful tool call. We then describe a
-reference architecture that separates online trajectory state, provider
-telemetry, and offline evaluation behind a one-way boundary, and an artifact
-that enforces nine validity invariants as regression tests. Our results are
-preliminary and methodological: they demonstrate that these failures are
-possible and cheaply preventable, not how often they occur.
+Evaluating a multi-step agent spans several layers --- model provider, tool
+runtime, mutable environment, trajectory logger, and benchmark evaluator --- and
+an error crossing a boundary between them can silently change which scientific
+variable is recorded without ever crashing the experiment. We report five
+controlled cases from an instrumented coding-agent harness in which a defensible
+implementation choice corrupts a behavioural feature, a ground-truth outcome, or
+a validity judgement. In one, a command touching no repository file moves a
+container-wide change count from 0 to 32 while the repository-scoped measurement
+correctly stays at 0; in another, 20 adversarial future steps alter 0 of 24
+online features once the temporal boundary is enforced. We argue these share one
+pathology, cross-layer confounding, and respond with a three-channel measurement
+architecture, an operational validity contract governing when a task label may
+be assigned, and an artifact enforcing nine invariants as regression tests.
+Results are preliminary and methodological: they establish that such failures
+are possible and cheaply preventable, not how often they occur.
 \end{abstract}
 
 \section{Introduction}
 
-If an agent benchmark cannot distinguish an agent failure from an infrastructure
-failure, its reliability estimate is itself unreliable. Trustworthy agentic
-systems are increasingly justified by quantitative claims --- success rates,
-failure predictors, early-abort policies, routing decisions --- and every such
-claim inherits the validity of the measurement system that produced it.
+When does an agent execution constitute valid evidence about the agent?
 
-Multi-step agents make that inheritance unusually fragile. A single-turn
-benchmark measures one model output against one reference. An agentic
-evaluation instead threads
-\emph{model $\rightarrow$ tool $\rightarrow$ environment $\rightarrow$ model
-$\rightarrow$ evaluation},
-repeatedly, through components that were never designed to be a measurement
-apparatus: a shell, a container filesystem, a rate-limited HTTP API, and a test
-runner. Each hand-off is a place where the quantity being recorded can drift
-from the quantity being claimed. The drift is rarely loud. A shell pipeline
-returns $0$; a file-change counter returns a large number; an evaluator returns
-``no failures.'' None of these looks like a bug.
+Agent evaluation increasingly studies reliability, failure trajectories,
+recovery, routing, and resource use. Every one of these analyses presupposes two
+things: that what is recorded as agent behaviour actually originated from the
+agent, and that what is recorded as task failure is actually a valid task
+outcome. Neither is automatic. If a benchmark cannot distinguish an agent
+failure from an infrastructure failure, its reliability estimate is itself
+unreliable.
 
-This paper is a measurement-integrity study rather than an agent-performance
-study. We make no claim about any model's or scaffold's capability. We instead
-treat the evaluation harness itself as the object under test, and ask what has
-to be true for its outputs to support trustworthy conclusions.
+Multi-step agents make this fragile in a specific way. A single-turn benchmark
+compares one model output to one reference. An agentic evaluation instead
+threads \emph{model $\rightarrow$ tool $\rightarrow$ environment $\rightarrow$
+model $\rightarrow$ evaluation}, repeatedly, through components never designed
+as measurement apparatus: a shell, a container filesystem, a rate-limited HTTP
+API, and a test runner. Each hand-off is a place where the quantity recorded can
+drift from the quantity claimed, and the drift is rarely loud. A pipeline
+returns $0$; a file counter returns a large number; an evaluator reports ``no
+failures.'' None looks like a bug.
+
+We call the underlying pathology a \textbf{cross-layer measurement confound}: an
+event or state originating outside the semantic quantity being measured is
+recorded as evidence about that quantity. The term is descriptive, not novel; we
+use it only as the organizing abstraction for five case studies.
+
+\vspace{2pt}
+\noindent\textbf{Threat model.} We study \emph{accidental} measurement-integrity
+failures in a multi-layer evaluation stack. We do not study malicious benchmark
+manipulation, model safety attacks, training contamination, or the population
+prevalence of these defects. The relevant threat is an evaluation pipeline that
+appears to succeed while silently recording the wrong scientific variable.
 
 \vspace{2pt}
 \noindent\textbf{Contributions.}
 \begin{itemize}\itemsep1pt \parskip0pt \topsep2pt
-\item \textbf{Controlled demonstrations} of five measurement-integrity failures
-in agentic coding evaluation, each reproduced from a released artifact with no
-paid API access (Section~\ref{sec:cases}).
-\item \textbf{A reference measurement architecture} separating online trajectory
-state, provider/infrastructure telemetry, and offline evaluation, with a one-way
-boundary that prevents outcome and future information from reaching online
-features (Section~\ref{sec:arch}).
-\item \textbf{A reproducible artifact} implementing nine validity invariants as
-regression tests, with a single deterministic command that regenerates every
-number we report (Section~\ref{sec:arch}).
+\item \textbf{Five controlled demonstrations} of cross-layer confounds in
+agentic coding evaluation, each reproduced from a released artifact with no paid
+API access (Section~\ref{sec:cases}).
+\item \textbf{A three-channel measurement architecture} and an operational
+validity contract defining when a task label may be assigned
+(Sections~\ref{sec:model} and~\ref{sec:arch}).
+\item \textbf{A reproducible artifact} enforcing nine validity invariants as
+regression tests, plus a minimum validity record we offer for discussion
+(Section~\ref{sec:arch}).
 \end{itemize}
 
 \section{A Measurement Integrity Model}
@@ -112,14 +119,14 @@ We model an agentic evaluation as three channels that must not leak into one
 another.
 
 \noindent\textbf{Online trajectory ($\mathcal{O}_t$).} Everything knowable at
-step $t$: issued commands, exit statuses, output sizes, token counts, repository
-state. Online behavioural features --- the inputs to any deployable monitor or
+step $t$: commands, exit statuses, output sizes, token counts, repository state.
+Online behavioural features --- the inputs to any deployable monitor or
 early-abort policy --- must be computable from $\mathcal{O}_t$ alone. If a
 feature can see step $t{+}1$ or the final outcome, a reported ``early
 prediction'' is partly a readout of the answer.
 
 \noindent\textbf{Provider telemetry ($\mathcal{P}$).} Physical API attempts,
-HTTP 503s, timeouts, quota events, and infrastructure termination reasons. These
+HTTP 503s, timeouts, quota events, infrastructure termination reasons. These
 describe the \emph{service}, not the agent. A retried 503 is not a reasoning
 error, and a run killed by a quota limit is not a task failure.
 
@@ -127,106 +134,122 @@ error, and a run killed by a quota limit is not a task failure.
 computed in a clean state from official test data after the agent has stopped.
 $Y$ must never be visible to $\mathcal{O}_t$.
 
-Two directed constraints follow, and they are the whole design:
-$\mathcal{E} \not\rightarrow \mathcal{O}_t$ (no outcome leakage) and
-$\mathcal{P} \not\rightarrow \mathcal{O}_t$ as \emph{semantics} (infrastructure
-events may be logged, but may not become agent behaviour).
-Figure~\ref{fig:arch} shows the resulting architecture.
+Two directed constraints follow: $\mathcal{E} \not\rightarrow \mathcal{O}_t$ (no
+outcome leakage) and $\mathcal{P} \not\rightarrow \mathcal{O}_t$ as
+\emph{semantics} (infrastructure events may be logged, never treated as agent
+behaviour). Figure~\ref{fig:arch} shows the architecture.
+
+\vspace{3pt}
+\noindent\fbox{\parbox{0.96\columnwidth}{\small
+\textbf{Operational validity contract.} A run $r$ is \emph{valid} when four
+conditions hold jointly. \textbf{Temporal:} its online measurements contain only
+information available at the measurement point, excluding future and final
+outcomes. \textbf{Infrastructure:} it terminated through a scientifically valid
+agent path, not a provider or runtime failure. \textbf{Evaluator:} its outcome
+came from the correctly configured, isolated offline evaluator.
+\textbf{Provenance:} its raw trajectory, state, and accounting artifacts are
+immutable and traceable to their execution identity. We assign
+$Y_{\text{success}}(r)$ \emph{only} when all four hold. This is the validity
+assumption our artifact implements and enforces --- not a theorem, and not a
+complete definition of evaluation validity.}}
 
 \section{Failure Cases}
 \label{sec:cases}
 
 We instrumented a coding-agent harness (mini-SWE-agent scaffold, SWE-bench
-Verified instances, containerised execution) and recorded cases where a natural
+Verified instance, containerised execution) and recorded cases where a natural
 implementation choice silently corrupts a measured quantity.
-Table~\ref{tab:cases} summarises them. All values are regenerated by the command
-in Section~\ref{sec:arch}; E1--E3 use a local container and no model inference,
-E4--E5 are pure Python.
+Table~\ref{tab:cases} gives each case, the layer the confound originates in, the
+scientific quantity it corrupts, and the measured evidence. All values are
+regenerated by one command; E1--E3 use a local container with no model
+inference, E4--E5 are pure Python.
 
-\noindent\textbf{E1: Omitted official test patch.} SWE-bench
-\texttt{FAIL\_TO\_PASS} identifiers frequently name test parametrisations that
-exist only \emph{after} the instance's official \texttt{test\_patch} is applied.
-Running the evaluator without it, on \texttt{matplotlib\_\_matplotlib-23412},
-yields pytest exit code \textbf{4} with ``no tests ran'' and ``ERROR: not
-found'': there is no test result at all. With the patch applied, the same
-command yields exit code \textbf{1} and \textbf{1 failed} --- a genuine signal.
-Both arms return $\text{success}=\text{false}$, so a harness checking only a
-success flag sees nothing wrong; but the first arm's ``0 failures'' is vacuous,
-and any pipeline that reads absence-of-failure as passing will emit false
-successes.
+\noindent\textbf{E1 (evaluator $\rightarrow$ ground truth).} SWE-bench
+\texttt{FAIL\_TO\_PASS} ids often name parametrisations existing only
+\emph{after} the official \texttt{test\_patch} is applied. Without it, pytest
+exits 4 with ``no tests ran''; with it, exit 1 and 1 failed. Both arms report
+$\text{success}=\text{false}$, so a flag check sees nothing wrong --- but the
+first arm's ``0 failures'' is vacuous, and any consumer reading
+absence-of-failure as passing emits false successes.
 
-\noindent\textbf{E2: Pipeline exit-code masking.} Agents pipe constantly
-(\texttt{pytest \ldots | tail -5}). Without \texttt{set -o pipefail} a POSIX
-shell reports the status of the \emph{last} stage. Measured in-container:
-\texttt{false | tail -5} returns \textbf{1} with \texttt{pipefail} and
-\textbf{0} without; the same holds for a failing Python invocation. Two of three
-probe commands have their failure fully masked. Every downstream failure-rate
-feature is then biased toward zero exactly when the agent is struggling.
+\noindent\textbf{E2 (tool runtime $\rightarrow$ behavioural signal).} Agents
+pipe constantly. Without \texttt{set -o pipefail} a POSIX shell reports the last
+stage's status, so a failing command piped into \texttt{tail} is recorded as a
+successful tool call and every failure-rate feature is biased toward zero
+exactly when the agent is struggling.
 
-\noindent\textbf{E3: Container-wide change attribution.} Counting modified files
-with \texttt{docker diff} attributes the whole container to the agent. In an
-earlier run on a real instance this reported \textbf{537} changed files at
-step~3, essentially all conda and pytest-cache churn. We reproduce the mechanism
-directly: executing a command that touches \emph{no} repository file moves the
-container-wide count from \textbf{0 to 32} while the repository-scoped git
-measurement stays at \textbf{0}. A single one-line source edit then moves the
-container count to 33 --- indistinguishable from noise --- while the git
-measurement moves to exactly \textbf{1 file, 2 lines}. The naive counter cannot
-separate agent edits from environment churn.
+\noindent\textbf{E3 (environment $\rightarrow$ progress measurement).} Counting
+modified files with \texttt{docker diff} attributes the whole container to the
+agent. A command touching \emph{no} repository file moves that count from 0 to
+32 while the repository-scoped git measurement stays at 0; one real source edit
+then moves the container count to 33 --- indistinguishable from noise --- while
+git moves to exactly 1 file, 2 lines.
 
-\noindent\textbf{E4: Oracle and future leakage.} We compute online features from
-a length-$k$ prefix, then append 20 maximally predictive future steps (exit
-status 127, \texttt{FATAL} output, $10^6$ tokens). Across \textbf{24} online
-features, \textbf{0} change. Reading a step at or beyond the cut raises
-\texttt{PrefixBoundaryError}, and the prefix object exposes no outcome
-attribute. This is an adversarial regression test, not a proof: it demonstrates
-that the leak path is closed by construction rather than by convention.
+\noindent\textbf{E4 (future/oracle $\rightarrow$ online feature).} We compute
+features from a length-$k$ prefix, then append 20 maximally predictive future
+steps (exit 127, \texttt{FATAL} output, $10^6$ tokens). Across 24 online
+features, 0 change; reading at or beyond the cut raises
+\texttt{PrefixBoundaryError} and the prefix exposes no outcome attribute. This
+is an adversarial regression test, not a proof: it shows the path is closed by
+construction rather than convention.
 
-\noindent\textbf{E5: Infrastructure-to-label contamination.} Provider failures
-must not enter the label set. Enumerating all termination reasons, the three
-classified as provider infrastructure (unavailable, timeout, rate-limited) are
-structurally refused a $Y$ label by a schema validator, while the five
-agent-semantic reasons accept one; there are \textbf{0} violations. In our own
-runs this was not hypothetical: \textbf{8} recorded sessions terminated on
-provider quota exhaustion, and all 8 carry no $Y$ label. Had they been scored,
-they would have entered a dataset as fabricated task failures.
+\noindent\textbf{E5 (infrastructure $\rightarrow$ task label).} Enumerating all
+termination reasons, the three classified as provider infrastructure
+(unavailable, timeout, rate-limited) are structurally refused a $Y$ label by a
+schema validator; the five agent-semantic reasons accept one; 0 violations. This
+was not hypothetical for us. Eight provider-backed sessions on one free-tier
+account (two parent runs executing 9 and 4 agent steps, plus six continuations
+restored from parent checkpoints) all terminated on quota exhaustion. Under the
+contract all eight are invalid and carry no label; a harness scoring
+non-completing runs as $Y=0$ would have recorded eight fabricated task failures.
+
+Across all five cases the common pathology is cross-layer confounding:
+evaluator configuration, tool runtime, environment churn, future state, or
+provider infrastructure is inadvertently recorded as evidence about agent
+behaviour.
 
 \begin{table*}[t]
 \centering
 \footnotesize
-\begin{tabular}{@{}p{2.3cm}p{3.2cm}p{4.9cm}p{4.9cm}@{}}
+\begin{tabular}{@{}p{1.75cm}p{1.5cm}p{2.6cm}p{5.5cm}p{4.0cm}@{}}
 \toprule
-\textbf{Failure mode} & \textbf{Naive measurement} & \textbf{Observed consequence} & \textbf{Corrected invariant} \\
+\textbf{Failure case} & \textbf{Source layer} & \textbf{Corrupted scientific quantity} & \textbf{Observed controlled evidence} & \textbf{Enforced invariant} \\
 \midrule
-E1 Missing evaluator test patch &
-Run \texttt{FAIL\_TO\_PASS} ids against the repo as-is &
-pytest exit 4, ``no tests ran''; no test result exists, yet ``0 failures'' is reportable &
-Reset test files to \texttt{base\_commit} and apply the official \texttt{test\_patch} before evaluating (I3) \\
+E1 Missing \texttt{test\_patch} &
+Evaluator &
+Outcome / ground truth &
+Without the patch pytest exits 4, ``no tests ran'' (no test executed); with it, exit 1 and 1 failed &
+Evaluator isolation and correct configuration (I3) \\
 \addlinespace
-E2 Pipeline exit-code masking &
-Record the shell's exit status for a piped command &
-\texttt{false | tail -5} $\rightarrow$ 0 instead of 1; failure-rate features biased toward zero &
-Execute every agent command under \texttt{set -o pipefail} \\
+E2 Pipeline masking &
+Tool runtime &
+Behavioural failure signal &
+\texttt{false | tail -5} yields exit 1 under \texttt{pipefail} and exit 0 without; 2 of 3 probes fully masked &
+Exit-status preservation \\
 \addlinespace
-E3 Container-wide file counting &
-\texttt{docker diff} line count &
-Pure environment churn moves the count $0\rightarrow32$ while repository-scoped stays 0 (537 in an earlier real run) &
-Repository-scoped git state with an explicit \texttt{measured} flag (I6) \\
+E3 Container-wide diff &
+Environment &
+Repository progress / state &
+Environment-only churn moves the container count $0\rightarrow32$ while repository-scoped stays 0; one edit gives 1 file, 2 lines &
+Repository-scoped measurement with a \texttt{measured} flag (I6) \\
 \addlinespace
-E4 Oracle / future leakage &
-Compute features over the full trajectory object &
-Future steps and $Y$ reachable from ``online'' features; 20 adversarial future steps change 0 of 24 &
-Features accept only a length-$k$ prefix copy exposing no outcome (I1, I2) \\
+E4 Future access &
+Future / oracle &
+Online behavioural feature &
+20 appended adversarial future steps alter 0 of 24 prefix features; reads past the cut raise an error &
+Temporal boundary on the prefix (I1, I2) \\
 \addlinespace
-E5 Provider error as task failure &
-Any non-completing run scores $Y=0$ &
-8 quota-terminated sessions would have become fabricated failures &
-Infrastructure terminations enumerated in one set; validator refuses any label (I4, I5) \\
+E5 Provider failure &
+Infrastructure &
+Sample validity / $Y_{\text{success}}$ &
+3 of 8 termination reasons are infrastructure and are refused a label, 0 violations; 8 quota-terminated sessions carry no label &
+Validity-state separation (I4, I5) \\
 \bottomrule
 \end{tabular}
-\caption{Five measurement-integrity failure modes. Every number is regenerated
-by the artifact's single reproduction command into machine-readable result
-files.}
+\caption{Five cross-layer measurement confounds. Each row names the layer the
+confounding signal originates in and the scientific quantity it corrupts. Every
+value is regenerated by the artifact's single reproduction command into
+machine-readable result files.}
 \label{tab:cases}
 \end{table*}
 
@@ -277,8 +300,8 @@ reach online features, and provider events must never become agent semantics.}
 
 The architecture instantiates Section~\ref{sec:model} as three separated
 channels. Online feature extraction is typed to accept only a
-\texttt{TrajectoryPrefix} --- an immutable copy of the first $k$ steps that
-holds no outcome record --- so leakage is a type error rather than a code-review
+\texttt{TrajectoryPrefix} --- an immutable copy of the first $k$ steps holding
+no outcome record --- so leakage is a type error rather than a code-review
 question. Provider retries and physical attempts are handled strictly below
 trajectory semantics, so a recovered 503 is invisible to behavioural features
 while remaining fully logged. The evaluator runs after termination in a clean
@@ -286,8 +309,8 @@ state, resetting test files to the instance base commit before applying the
 official test patch, so the agent cannot influence the tests that judge it.
 
 \noindent\textbf{Reference invariants.} Our artifact enforces the following as
-regression tests. We present these as the invariants \emph{this} artifact
-implements, not as a claim that they are universally necessary or sufficient.
+regression tests. These are the invariants \emph{this} artifact implements, not
+a claim that they are universally necessary or sufficient.
 
 \begin{quote}\small
 \textbf{I1} Online prefix cannot access future trajectory information.
@@ -302,78 +325,82 @@ implements, not as a claim that they are universally necessary or sufficient.
 parents.
 \end{quote}
 
-The artifact ships 128 passing tests covering these invariants, including
-adversarial cases (E4), negative cases for test-command detection, and
-provider-error classification. Every number in this paper is regenerated by a
-single deterministic command requiring no paid API, which writes
-machine-readable results for E1--E5. E4 and E5 run anywhere; E1--E3
-additionally require a local container runtime and one benchmark image.
+The artifact ships 128 passing tests covering these invariants, including the
+adversarial case E4, negative cases for test-command detection, and
+provider-error classification. Every number here is regenerated by one
+deterministic command requiring no paid API. E4 and E5 run anywhere; E1--E3
+additionally need a local container runtime and one benchmark image.
+
+\noindent\textbf{Minimum validity record.} The invariants are only auditable if
+runs carry enough provenance to check them. For each evaluation run we suggest
+recording at least: (1) validity status and, if invalid, the reason; (2)
+evaluator and benchmark configuration and version; (3) the temporal scope of any
+online features; (4) logical agent calls separately from physical provider
+attempts and events; and (5) immutable run and checkpoint identifiers or hashes.
+We offer these fields as a starting point for community discussion, not a
+complete reporting standard.
 
 \section{Discussion and Limitations}
 
-\noindent\textbf{Limitations.} (1) Our failure cases demonstrate
-\emph{possibility and mechanism}, not \emph{prevalence}; we make no estimate of
-how often these defects occur in published harnesses. (2) The artifact is
-validated primarily for mini-SWE-agent / SWE-bench-style coding-agent workflows,
-and the invariants require evaluation on other agent frameworks before being
-treated as general. (3) The provider events we report are case-study
-infrastructure failures encountered on one free-tier account; they are
-\emph{not} estimates of any provider's service reliability. (4) We have not
-established real-provider replay stability: our same-condition continuations
-were terminated by quota limits before producing valid comparisons, so we report
-no replay-fidelity result. (5) We report no predictor, scheduler, or
-large-scale empirical study, and no claim about agent success rates. (6) Several
-of our own numbers were produced by fixing defects we introduced, which is
-evidence that the invariants are testable, not that they are complete.
+\noindent\textbf{Limitations.} (1) These cases establish \emph{possibility and
+mechanism}, not \emph{prevalence}; we make no estimate of how often such defects
+occur in published harnesses. (2) The artifact is validated primarily for one
+coding-agent / SWE-bench-style setting, and the invariants need evaluation on
+other frameworks before being treated as general. (3) The provider events we
+report are case-study evidence from one free-tier account; they are \emph{not}
+estimates of any provider's service reliability. (4) \textbf{Real-provider
+replay stability remains unmeasured}: every continuation we launched was
+terminated by provider quota before executing a step, so we report no
+replay-fidelity result and no divergence measurement. (5) We report no
+predictor, scheduler, or large-scale agent-performance study, and no claim about
+agent success rates. (6) Our invariants may be incomplete; passing them is
+necessary for the validity conditions we state, not sufficient for validity in
+general.
 
-\noindent\textbf{Questions for the community.} These cases suggest that
-trustworthy-agent benchmarking itself needs assurance practices, and we would
-like discussion on four questions. \emph{What constitutes a valid agent
-failure?} A run killed by a quota limit, a container timeout, and a genuine
-reasoning error are currently often scored identically. \emph{How should
-infrastructure-invalid executions be reported?} Silently dropping them biases
-success rates upward; scoring them as failures biases them downward; we retain
-them immutably and label them as invalid. \emph{What may an online evaluation
-system observe?} Claims about early failure prediction are only meaningful
-relative to a stated information boundary. \emph{What provenance should agent
-benchmark artifacts record?} We argue for physical-attempt ledgers, hashed raw
-trajectories, and explicit run dispositions as a minimum.
+\noindent\textbf{Question for the community.} What minimum validity and
+provenance information should accompany an agent benchmark result before that
+result can be interpreted as evidence about agent reliability? Answering it is a
+precondition for shared evaluation protocols and reusable artifacts in
+multi-step agent evaluation, and the record above is our attempt at a concrete
+starting point rather than a finished answer.
 
 \section{Related Work}
 
-Recent work characterises \emph{how} agents fail and how early failure can be
-detected. \citet{zhao2026failure} analyse CLI coding-agent failure as a temporal
-process across thousands of trajectories; \citet{ruan2026doomed} predict
-eventual failure from early rounds to abort doomed episodes; and
-\citet{li2026early} derive online warning signals for wasted computation in
-multi-agent systems. Each of these depends on the trajectory record being a
-faithful account of what happened --- exactly the property we test.
-\citet{gonuguntla2026replay} shows that statically replaying logged trajectories
-under a substituted model scores a counterfactual world, and uses branching
-rollouts instead; that argument is about the validity of an evaluation
-procedure, and is close in spirit to ours, though it targets model switching
-rather than instrumentation boundaries. SWE-bench \citep{jimenez2024swebench}
-and its human-validated subset \citep{openai2024swebenchverified} supply the
-task and evaluator we instrument, and SWE-agent \citep{yang2024sweagent}
-established the agent-computer interface such harnesses build on.
-\citet{kapoor2024agentsthatmatter} argue that agent benchmarking is beset by
-methodological problems including inadequate holdout and cost-blind comparison;
-our contribution is complementary and narrower, targeting validity at the
-boundary between agent execution, provider infrastructure, instrumentation, and
-offline evaluation. We do not claim to be first to observe any individual
-defect; we claim value in demonstrating them concretely and closing them with
+Where prior work studies how agents fail, we study when an execution should
+count as evidence about agent failure at all.
+\citet{zhao2026failure} analyse the onset, evolution, and recovery of
+coding-agent failures across a large set of complete trajectories;
+\citet{ruan2026doomed} predict eventual failure from early rounds to abort
+doomed episodes; and \citet{li2026early} derive online warning signals for
+wasted computation. Each presupposes that the trajectory record faithfully
+represents what happened --- the property we test. Complementary to these,
+\citet{gonuguntla2026replay} show that static replay under a substituted model
+scores a counterfactual world and use same-model controls to quantify replay
+noise; we focus instead on cross-layer integrity between execution,
+instrumentation, provider state, and evaluator output.
+\citet{weidinger2025evalscience} argue for maturing an evaluation science for
+generative AI with attention to validity and evaluation norms; we instantiate
+those concerns as concrete, regression-tested failure cases in multi-step
+coding-agent infrastructure. SWE-bench \citep{jimenez2024swebench} and its
+human-validated subset \citep{openai2024swebenchverified} supply the benchmark
+and evaluator methodology we instrument, and SWE-agent
+\citep{yang2024sweagent} established the agent-computer interface such harnesses
+build on. \citet{kapoor2024agentsthatmatter} identify methodological problems in
+agent benchmarking including inadequate holdout and cost-blind comparison; our
+scope is narrower, targeting measurement validity at layer boundaries. We do not
+claim to be first to observe any individual defect; the contribution is
+demonstrating them concretely under one abstraction and closing them with
 enforced invariants.
 
 \section{Conclusion}
 
 Trustworthy agentic systems require trustworthy measurements, and in multi-step
-evaluation the measurement apparatus is itself a distributed system with several
-failure-prone boundaries. We demonstrated five controlled cases where a
-reasonable implementation choice silently corrupts a behavioural feature, a task
-label, or a resource count, and we described an architecture that separates
-online trajectory state, provider telemetry, and offline evaluation behind a
-one-way boundary, enforced by nine regression-tested invariants. The results are
-preliminary and methodological. We offer them less as a solution than as a
+evaluation the measurement apparatus is itself a layered system whose boundaries
+can confound the variable being recorded. We demonstrated five controlled
+cross-layer confounds, gave an architecture and an operational validity contract
+that separate online trajectory state, provider telemetry, and offline
+evaluation, and released an artifact enforcing nine regression-tested
+invariants. The results are preliminary and methodological. We offer them as a
 concrete starting point for a shared discussion about what an agent evaluation
 harness must guarantee before its numbers can carry weight.
 

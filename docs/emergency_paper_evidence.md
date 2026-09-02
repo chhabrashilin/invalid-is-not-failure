@@ -90,9 +90,27 @@ E4–E5 are pure Python and run anywhere. **No paid API is used by any experimen
   `cost_limit`, `crash`, `step_limit`, `submitted`, `timeout` → `true`.
   `invariant_violations=[]`. Observed: 8 sessions, `all_invalid=true`,
   `all_unlabelled=true`, reasons `["PROVIDER_RATE_LIMITED"]`.
+- **PROVENANCE OF THE 8 SESSIONS (audited 2026-09-02):** all 8 are genuine
+  provider-backed executions, not fixtures or mocks. Every `session.json`
+  records `execution_backend=mini_swe_agent`, `model_id=gemini/gemini-3.6-flash`,
+  `scaffold=mini-swe-agent/swebench` v2.4.6. The call ledger shows 21 physical
+  provider attempts across them (15 scoped `parent`, 6 scoped to the
+  continuations), of which 13 returned SUCCESS. Decomposition:
+  - **2 parent runs** — `parent-1b355d2f` (9 agent steps, 10 logical calls,
+    9 SUCCESS then RATE_LIMITED) and `parent-a4ddbc72` (4 steps, 5 calls,
+    4 SUCCESS then RATE_LIMITED), both against a real containerised
+    `matplotlib__matplotlib-23412`.
+  - **6 continuations** — restored from real `docker commit` checkpoint images
+    (`phase05/ckpt:b1c1f830b050`, `phase05/ckpt:ae2bb723cbbc`) taken at step 3;
+    restore times 0.45–1.67 s are recorded. Each made exactly 1 physical
+    provider call, was rate-limited, and executed **0 agent steps**.
+  So "6 continuations" is substantiated as real restored provider-backed
+  continuations; **0 of 6 were valid** and none produced a comparison.
 - **LIMITATION:** The 8 sessions are from one free-tier account on one provider.
   They are a case study in infrastructure/label separation, **not** an estimate
-  of that provider's reliability. The paper states this explicitly.
+  of that provider's reliability. The paper states this explicitly. Because all
+  6 continuations died on their first call, **real-provider replay stability
+  remains unmeasured** and no divergence or replay-fidelity number is reported.
 
 ## Non-experimental claims
 
