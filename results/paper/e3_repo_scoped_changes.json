@@ -1,0 +1,21 @@
+{
+  "experiment": "E3",
+  "claim": "A container-wide file-change count attributes environment and cache churn to the agent; a repository-scoped git measurement attributes only the agent's own edits.",
+  "container_wide_docker_diff": {
+    "at_start": 0,
+    "after_environment_churn_only": 32,
+    "after_one_source_edit": 33
+  },
+  "repository_scoped_git": {
+    "at_start": 0,
+    "after_environment_churn_only": 0,
+    "after_one_source_edit": 1,
+    "lines_added_after_edit": 2,
+    "measured_flag": true
+  },
+  "container_wide_inflation_from_churn": 32,
+  "repo_scoped_inflation_from_churn": 0,
+  "corrected_invariant": "Repository-change features are computed from git state scoped to the benchmark repository, with a `measured` flag so a failed measurement is never read as zero change.",
+  "generated_at": "2026-09-02T10:44:19.906697+00:00",
+  "wall_time_s": 53.96799999999348
+}

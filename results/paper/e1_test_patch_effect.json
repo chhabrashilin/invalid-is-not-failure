@@ -1,0 +1,25 @@
+{
+  "experiment": "E1",
+  "claim": "Omitting the official test_patch makes the FAIL_TO_PASS node id non-existent, so pytest collects nothing and the verdict is vacuous rather than a real failure signal.",
+  "instance_id": "matplotlib__matplotlib-23412",
+  "fail_to_pass_id": "lib/matplotlib/tests/test_patches.py::test_dash_offset_patch_draw[png]",
+  "arms": {
+    "without_test_patch": {
+      "success": false,
+      "tests_passed": null,
+      "tests_failed": null,
+      "score": 0.0,
+      "raw_artifact_sha256": "a7eb18efac88119aeb6c628d60f103853cb014458781ae4271d5974375390f28"
+    },
+    "with_test_patch": {
+      "success": false,
+      "tests_passed": null,
+      "tests_failed": 1,
+      "score": 0.0,
+      "raw_artifact_sha256": "f5081f513b3ccf0c2bcdc4f523cad281477371b09954056b95377a3e90dcf99d"
+    }
+  },
+  "corrected_invariant": "The evaluator resets test files to base_commit and applies the official test_patch before running FAIL_TO_PASS.",
+  "generated_at": "2026-09-02T10:43:23.450492+00:00",
+  "wall_time_s": 32.40700000000652
+}

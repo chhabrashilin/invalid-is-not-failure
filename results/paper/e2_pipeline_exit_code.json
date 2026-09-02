@@ -1,0 +1,28 @@
+{
+  "experiment": "E2",
+  "claim": "Without `set -o pipefail` a shell pipeline reports the status of its LAST stage, so a failing command piped into `tail` is recorded as a successful tool call and every failure-rate feature is biased toward zero.",
+  "cases": {
+    "failing_pipeline": {
+      "command": "false | tail -5",
+      "exit_status_with_pipefail": 1,
+      "exit_status_without_pipefail": 0
+    },
+    "passing_pipeline": {
+      "command": "true | tail -5",
+      "exit_status_with_pipefail": 0,
+      "exit_status_without_pipefail": 0
+    },
+    "failing_pytest_pipeline": {
+      "command": "python -c \"import sys; sys.exit(1)\" | tail -5",
+      "exit_status_with_pipefail": 1,
+      "exit_status_without_pipefail": 0
+    }
+  },
+  "commands_whose_failure_is_masked": [
+    "failing_pipeline",
+    "failing_pytest_pipeline"
+  ],
+  "corrected_invariant": "Every agent command runs under `set -o pipefail`.",
+  "generated_at": "2026-09-02T10:43:25.939798+00:00",
+  "wall_time_s": 2.48499999998603
+}

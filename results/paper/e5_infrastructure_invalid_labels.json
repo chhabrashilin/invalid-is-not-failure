@@ -1,0 +1,50 @@
+{
+  "experiment": "E5",
+  "claim": "A run terminated by provider infrastructure (503, timeout, or quota) is not a task failure and is structurally prevented from receiving a Y_success label.",
+  "per_termination_reason": {
+    "PROVIDER_RATE_LIMITED": {
+      "classified_as_provider_infrastructure": true,
+      "labelling_with_y_success_allowed": false
+    },
+    "PROVIDER_TIMEOUT": {
+      "classified_as_provider_infrastructure": true,
+      "labelling_with_y_success_allowed": false
+    },
+    "PROVIDER_UNAVAILABLE": {
+      "classified_as_provider_infrastructure": true,
+      "labelling_with_y_success_allowed": false
+    },
+    "cost_limit": {
+      "classified_as_provider_infrastructure": false,
+      "labelling_with_y_success_allowed": true
+    },
+    "crash": {
+      "classified_as_provider_infrastructure": false,
+      "labelling_with_y_success_allowed": true
+    },
+    "step_limit": {
+      "classified_as_provider_infrastructure": false,
+      "labelling_with_y_success_allowed": true
+    },
+    "submitted": {
+      "classified_as_provider_infrastructure": false,
+      "labelling_with_y_success_allowed": true
+    },
+    "timeout": {
+      "classified_as_provider_infrastructure": false,
+      "labelling_with_y_success_allowed": true
+    }
+  },
+  "invariant_violations": [],
+  "observed_real_runs": {
+    "sessions": 8,
+    "all_invalid": true,
+    "all_unlabelled": true,
+    "termination_reasons": [
+      "PROVIDER_RATE_LIMITED"
+    ]
+  },
+  "corrected_invariant": "Provider-infrastructure terminations are enumerated in one set that a schema validator iterates, so a newly added reason cannot silently escape the rule.",
+  "generated_at": "2026-09-02T10:42:44.481922+00:00",
+  "wall_time_s": 0.0
+}

@@ -1,0 +1,17 @@
+{
+  "generated_at": "2026-09-02T10:42:51.042827+00:00",
+  "experiments": {
+    "e1": {
+      "status": "ok",
+      "file": "e1_test_patch_effect.json"
+    },
+    "e2": {
+      "status": "ok",
+      "file": "e2_pipeline_exit_code.json"
+    },
+    "e3": {
+      "status": "ok",
+      "file": "e3_repo_scoped_changes.json"
+    }
+  }
+}

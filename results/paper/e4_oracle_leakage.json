@@ -1,0 +1,15 @@
+{
+  "experiment": "E4",
+  "claim": "Appending 20 maximally predictive future steps to a trajectory cannot change any online feature computed from the length-k prefix.",
+  "prefix_length_k": 3,
+  "future_steps_appended": 20,
+  "n_features_compared": 24,
+  "features_changed_by_future_information": {},
+  "prefix_len_stays": 3,
+  "reading_step_at_or_beyond_cut_raises": true,
+  "boundary_error_type": "PrefixBoundaryError",
+  "outcome_attributes_exposed_on_prefix": [],
+  "corrected_invariant": "Online feature extraction accepts only a TrajectoryPrefix, which holds a copy of the first k steps and exposes no outcome record.",
+  "generated_at": "2026-09-02T10:42:44.474875+00:00",
+  "wall_time_s": 1.5160000000032596
+}
