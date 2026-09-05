@@ -1,0 +1,83 @@
+EASYCHAIR SUBMISSION METADATA -- LOCAL ONLY
+===========================================
+
+*** DO NOT UPLOAD THIS FILE AS SUPPLEMENTARY MATERIAL. ***
+*** It identifies the author. It exists only to be typed into the ***
+*** EasyChair web form. The uploaded REVIEW PDF stays anonymous.  ***
+
+
+PAPER TYPE
+----------
+Short Paper (2-4 pages main technical content, references excluded)
+
+
+SYMPOSIUM / TRACK
+-----------------
+AAAI 2026 Fall Symposium Series
+Trustworthy Agentic Systems (TAS 2026)
+
+
+TITLE  (must match the PDF exactly)
+-----------------------------------
+Invalid Is Not Failure: Infrastructure Censoring Bias in Long-Horizon Agent Evaluation
+
+
+AUTHOR
+------
+1. Shilin Chhabra
+   Affiliation: University of Wisconsin-Madison
+
+Author order: Shilin Chhabra (sole author)
+No coauthors.
+
+
+ABSTRACT  (plain text; semantically identical to the compiled abstract)
+-----------------------------------------------------------------------
+Long-running agents sometimes stop without a valid task outcome because the
+provider, runtime, or harness failed rather than the agent. Reported reliability
+then depends on a reporting choice: score such runs as failures, or drop them.
+We show these choices err in opposite directions, and that the error persists
+even when infrastructure failures are independent of agent behaviour: a per-step
+hazard compounds to an observation probability s^H in the horizon H, so
+censoring becomes informative whenever H is associated with success. We give
+assumption-free identification bounds, then show the complete-case estimand
+satisfies p_cc - p = Cov(Y, s^H) / E[s^H], while scoring invalid runs as
+failures can never overstate p. Two public corpora -- 80,036
+software-engineering and 4,950 tool-agent trajectories -- behave exactly as the
+theory predicts: where successful runs are much shorter, dropping invalid runs
+inflates reliability by 2.7 points at a 2% hazard; where horizons are nearly
+outcome-independent, that bias almost vanishes while invalid-as-failure still
+costs 12.6 points. Censoring-aware weighting recovers the estimand when the
+mechanism is known. We recommend benchmarks report validity counts and censoring
+sensitivity rather than silently choosing a policy.
+
+
+KEYWORDS
+--------
+agent evaluation
+trustworthy AI
+LLM agents
+infrastructure censoring
+reliability
+benchmarking
+missing outcomes
+
+
+TOPICS
+------
+Primary:    Evaluation science / reliability metrics
+Secondary:  Reliable agent execution
+            Reproducibility
+            Auditing / assurance
+
+
+FILE TO UPLOAD
+--------------
+tas_submission_review/TAS2026_Anonymous_ShortPaper.pdf
+
+Verified anonymous: no author name, affiliation, email, institution, username,
+local path, or repository URL appears in the source or the compiled PDF; PDF
+metadata carries no /Author field.
+
+DO NOT upload tas_camera_ready_draft/ -- that version names the author and is
+for post-acceptance use only.

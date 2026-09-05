@@ -1,0 +1,14 @@
+DO_NOT_SUBMIT_FOR_REVIEW
+========================
+
+This directory contains an AUTHOR-NAMED camera-ready DRAFT.
+It names Shilin Chhabra, University of Wisconsin-Madison.
+
+It MUST NOT be uploaded to EasyChair for anonymous review.
+For the TAS 2026 review submission use:
+    tas_submission_review/TAS2026_Anonymous_ShortPaper.pdf
+
+This draft is a convenience for AFTER acceptance only. Before any
+camera-ready submission, recheck it against the AAAI camera-ready (CRC)
+instructions for the relevant year: the copyright block, author-kit
+version, and page limits may all differ from the review version.

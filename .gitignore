@@ -118,3 +118,9 @@ paper/**/*.fls
 
 # Local reference build of the submission PDF (Overleaf output is authoritative).
 !tas_overleaf/main_reference_build.pdf
+
+# TAS submission packages (small; part of the deliverable)
+!tas_submission_review/
+!tas_submission_review/**
+!tas_camera_ready_draft/
+!tas_camera_ready_draft/**

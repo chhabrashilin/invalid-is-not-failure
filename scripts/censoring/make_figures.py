@@ -15,6 +15,12 @@ from pathlib import Path
 import matplotlib
 
 matplotlib.use("Agg")
+# AAAI (like most ACM/IEEE venues) requires Type 1 or TrueType fonts. Matplotlib
+# defaults to Type 3 in PDF output, which format checkers reject, so force
+# TrueType (42) for both PDF and PS backends before any figure is created.
+matplotlib.rcParams["pdf.fonttype"] = 42
+matplotlib.rcParams["ps.fonttype"] = 42
+
 import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 

@@ -1,0 +1,53 @@
+TAS 2026 EASYCHAIR SUBMISSION CHECKLIST  (human steps)
+=======================================================
+
+Upload file:
+    tas_submission_review/TAS2026_Anonymous_ShortPaper.pdf
+
+Type metadata from:
+    tas_submission_review/EASYCHAIR_METADATA.txt   (LOCAL ONLY -- do not upload)
+
+[ ]  EasyChair URL is the AAAI Fall Symposium Series (FSS-26) site, TAS track
+[ ]  Submission type = Short Paper
+[ ]  Title entered EXACTLY:
+         Invalid Is Not Failure: Infrastructure Censoring Bias in
+         Long-Horizon Agent Evaluation
+     (one line in the form; matches the PDF exactly)
+[ ]  Author metadata: Shilin Chhabra
+[ ]  Affiliation metadata: University of Wisconsin-Madison
+[ ]  Author order: 1. Shilin Chhabra   (sole author -- no coauthors to add)
+[ ]  Abstract pasted from EASYCHAIR_METADATA.txt (matches the paper)
+[ ]  Keywords entered: agent evaluation; trustworthy AI; LLM agents;
+     infrastructure censoring; reliability; benchmarking; missing outcomes
+[ ]  Correct symposium/track selected (Trustworthy Agentic Systems)
+[ ]  Anonymous review PDF uploaded (TAS2026_Anonymous_ShortPaper.pdf)
+[ ]  Opened the uploaded PDF from EasyChair and confirmed:
+         - it is the 5-page censoring paper
+         - page 1 shows "Anonymous submission", NOT your name
+         - Figure 1 has two panels (a) SWE-agent and (b) tau-bench
+[ ]  Confirmed you did NOT upload anything from tas_camera_ready_draft/
+[ ]  Confirmed you did NOT upload EASYCHAIR_METADATA.txt as supplementary
+[ ]  No obsolete PDF left attached to the submission
+[ ]  Submission confirmation email received
+[ ]  Submission ID recorded here: ______________________
+
+
+ALREADY VERIFIED MECHANICALLY (no action needed)
+------------------------------------------------
+  US Letter 612x792 on all 5 pages
+  Main text ends on page 4  -> <= 4 pages excluding references
+  References begin page 4; appendix begins page 5 (after references)
+  0 overfull hbox, 0 overfull vbox
+  0 undefined citations, 0 undefined references, 0 "??" markers
+  20 font faces, all embedded, no Type 3
+  PDF metadata carries no /Author
+  0 identity hits in source or compiled PDF
+  0 secrets or local paths in the submission package
+  All 24 numeric claims trace to results/censoring/ artifacts
+  Full pipeline reproduces bit-identically
+
+
+AFTER ACCEPTANCE ONLY
+---------------------
+  Use tas_camera_ready_draft/ as a starting point, and recheck it against the
+  AAAI camera-ready (CRC) instructions before submitting.
