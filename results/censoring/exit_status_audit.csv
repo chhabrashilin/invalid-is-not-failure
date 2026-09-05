@@ -1,0 +1,10 @@
+exit_status,n,share_of_all,resolved_n,resolve_rate,mean_H,median_H,mean_H_resolved,mean_H_unresolved,n_models
+submitted,51087,0.6383,12672,0.248047,14.711,13.0,13.186,15.214,3
+submitted (exit_context),21026,0.262707,712,0.033863,50.543,41.0,50.471,50.545,3
+exit_context,3568,0.04458,0,0.0,51.318,36.0,,51.318,3
+early_exit,3176,0.039682,0,0.0,32.44,18.0,,32.44,2
+submitted_no_patch,1066,0.013319,0,0.0,12.242,11.0,,12.242,3
+submitted (exit_format),80,0.001,5,0.0625,13.775,9.0,13.2,13.813,2
+exit_format,20,0.00025,0,0.0,13.25,8.5,,13.25,1
+submitted (exit_cost),10,0.000125,0,0.0,80.5,19.5,,80.5,1
+exit_cost,3,3.7e-05,0,0.0,8.333,10.0,,8.333,1

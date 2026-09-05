@@ -1,0 +1,26 @@
+{
+  "kind": "censoring_trajectory_summary_provenance",
+  "dataset": "nebius/SWE-agent-trajectories",
+  "sha": "68195a1450865274106246d0d0296a1d6807b88e",
+  "lastModified": "2024-12-23T12:42:05.000Z",
+  "license": "cc-by-4.0",
+  "downloads": 7460,
+  "parquet_shards": 12,
+  "retrieval_date": "2026-09-05",
+  "retrieved_at": "2026-09-05T08:14:44.469628+00:00",
+  "rows": 80036,
+  "columns_read": [
+    "instance_id",
+    "model_name",
+    "target",
+    "exit_status",
+    "trajectory.list.element.role"
+  ],
+  "compressed_bytes_read": 599325,
+  "full_dataset_bytes": 1113000000,
+  "fraction_downloaded": 0.00054,
+  "step_count_definition": "H = number of trajectory messages with role == \"ai\"; one agent decision/action turn each. system/user messages are scaffold and environment turns and are excluded.",
+  "step_count_defined_before_results": true,
+  "filtering": "none at this stage; all rows retained",
+  "wall_time_s": 169.27620792388916
+}

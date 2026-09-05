@@ -111,3 +111,7 @@ paper/**/*.fdb_latexmk
 paper/**/*.fls
 !results/paper/
 !results/paper/*.json
+
+# Censoring-study evidence files (small JSON/CSV/parquet) are part of the artifact.
+!results/censoring/
+!results/censoring/**

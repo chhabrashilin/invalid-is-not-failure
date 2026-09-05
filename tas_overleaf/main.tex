@@ -3,12 +3,12 @@
 %% must be present in the same Overleaf project. See UPLOAD_INSTRUCTIONS.txt.
 %%
 %% Build order: pdflatex -> bibtex -> pdflatex -> pdflatex
-%% No external figure files: Figure 1 is drawn inline with TikZ.
+%% External file required: figures/fig1_censoring_bias.pdf
 
 \documentclass[letterpaper]{article}
 
 % --- REQUIRED by the AAAI author kit -----------------------------------
-\usepackage{aaai26}      % from the official author kit
+\usepackage{aaai26}
 \usepackage{times}
 \usepackage{helvet}
 \usepackage{courier}
@@ -23,19 +23,17 @@
 
 % --- Additional packages actually used ---------------------------------
 \usepackage{booktabs}
-\usepackage{tikz}
-\usetikzlibrary{arrows.meta,positioning}
+\usepackage{amsmath}
+\usepackage{amssymb}
 
-% AAAI requires this metadata line.
 \pdfinfo{
 /TemplateVersion (2026.1)
 }
 
-% Numbered sections so the in-text cross references resolve.
 \setcounter{secnumdepth}{2}
 
-\title{Cross-Layer Confounds in Agent Evaluation:\\
-Measurement Integrity for Trustworthy Agentic Systems}
+\title{Invalid Is Not Failure:\\
+Censoring-Aware Evaluation of Long-Horizon AI Agents}
 
 % ANONYMOUS SUBMISSION. Author and affiliation blocks are intentionally absent.
 % If the author kit version in use requires an \affiliations block to compile,
@@ -47,362 +45,333 @@ Measurement Integrity for Trustworthy Agentic Systems}
 \maketitle
 
 \begin{abstract}
-Evaluating a multi-step agent spans several layers --- model provider, tool
-runtime, mutable environment, trajectory logger, and benchmark evaluator --- and
-an error crossing a boundary between them can silently change which scientific
-variable is recorded without ever crashing the experiment. We report five
-controlled cases from an instrumented coding-agent harness in which a defensible
-implementation choice corrupts a behavioural feature, a ground-truth outcome, or
-a validity judgement. In one, a command touching no repository file moves a
-container-wide change count from 0 to 32 while the repository-scoped measurement
-correctly stays at 0; in another, 20 adversarial future steps alter 0 of 24
-online features once the temporal boundary is enforced. We argue these share one
-pathology, cross-layer confounding, and respond with a three-channel measurement
-architecture, an operational validity contract governing when a task label may
-be assigned, and an artifact enforcing nine invariants as regression tests.
-Results are preliminary and methodological: they establish that such failures
-are possible and cheaply preventable, not how often they occur.
+Long-running agents sometimes stop without producing a valid task outcome
+because the provider, runtime, or harness failed rather than the agent. Reported
+reliability then depends on a reporting choice: count such executions as
+failures, or drop them. We show these choices bias in \emph{opposite}
+directions, and that the bias is not benign even when infrastructure failures
+are independent of agent behaviour. Because a per-step failure hazard compounds
+over a trajectory, survival is $s^{H}$ in the horizon $H$, so censoring becomes
+informative whenever $H$ is associated with success. We derive
+$p_{\mathrm{drop}}-p=\mathrm{Cov}(Y,s^{H})/\mathbb{E}[s^{H}]$ and
+$p_{\mathrm{fail}}-p=\mathbb{E}[Y(s^{H}-1)]\le 0$. On 80{,}035 public
+software-engineering agent trajectories, where resolved runs average 15.2 agent
+steps and unresolved runs 28.7, a 1\% per-step hazard moves reported reliability
+from a true 16.73\% to 18.27\% (drop) or 14.46\% (fail): a 3.8-point spread from
+the reporting policy alone. Inverse-probability-of-censoring weighting recovers
+the true rate to within 0.01 points when the censoring model is known, and
+degrades predictably when it is not. We argue reliability reports should
+separate semantic failure from censoring and state the censoring mechanism.
 \end{abstract}
 
 \section{Introduction}
 
-When does an agent execution constitute valid evidence about the agent?
+A long-horizon agent run can end for two very different reasons. The agent can
+fail the task, or the measurement apparatus can fail the agent: a provider quota
+is exhausted, an API returns 503, a container dies, a harness times out. The
+first is evidence about the agent. The second is not. Yet benchmark reports
+usually reduce both to a single success rate, and the reduction happens through
+an unstated reporting policy --- either such runs are scored as failures, or
+they are dropped from the denominator.
 
-Agent evaluation increasingly studies reliability, failure trajectories,
-recovery, routing, and resource use. Every one of these analyses presupposes two
-things: that what is recorded as agent behaviour actually originated from the
-agent, and that what is recorded as task failure is actually a valid task
-outcome. Neither is automatic. If a benchmark cannot distinguish an agent
-failure from an infrastructure failure, its reliability estimate is itself
-unreliable.
+We are not the first to observe that agent benchmarks have validity problems
+\citep{kapoor2024agentsthatmatter,weidinger2025evalscience,zhu2026guardrails}.
+Our claim is narrower and, we think, underappreciated: \emph{the two obvious
+ways of handling invalid runs are biased in opposite directions, and neither is
+conservative.} The reason is structural. Suppose infrastructure failures are
+entirely independent of what the agent is doing, arriving with a small constant
+hazard $q$ at each agent decision step. A run of horizon $H$ then survives with
+probability $s^{H}$, $s=1-q$. Long runs are exposed more often. So even a
+perfectly outcome-independent per-step failure becomes \emph{informative at the
+trajectory level} the moment horizon is associated with success --- which, in
+practice, it strongly is: on the corpus we study, resolved trajectories average
+15.2 agent steps and unresolved ones 28.7.
 
-Multi-step agents make this fragile in a specific way. A single-turn benchmark
-compares one model output to one reference. An agentic evaluation instead
-threads \emph{model $\rightarrow$ tool $\rightarrow$ environment $\rightarrow$
-model $\rightarrow$ evaluation}, repeatedly, through components never designed
-as measurement apparatus: a shell, a container filesystem, a rate-limited HTTP
-API, and a test runner. Each hand-off is a place where the quantity recorded can
-drift from the quantity claimed, and the drift is rarely loud. A pipeline
-returns $0$; a file counter returns a large number; an evaluator reports ``no
-failures.'' None looks like a bug.
-
-We call the underlying pathology a \textbf{cross-layer measurement confound}: an
-event or state originating outside the semantic quantity being measured is
-recorded as evidence about that quantity. The term is descriptive, not novel; we
-use it only as the organizing abstraction for five case studies.
-
-\vspace{2pt}
-\noindent\textbf{Threat model.} We study \emph{accidental} measurement-integrity
-failures in a multi-layer evaluation stack. We do not study malicious benchmark
-manipulation, model safety attacks, training contamination, or the population
-prevalence of these defects. The relevant threat is an evaluation pipeline that
-appears to succeed while silently recording the wrong scientific variable.
+This is right-censoring, and the statistical machinery for it is standard
+\citep{horvitz1952generalization,robins1994estimation}. The contribution is the
+mapping, the direction result, and the magnitude on real agent data.
 
 \vspace{2pt}
 \noindent\textbf{Contributions.}
 \begin{itemize}\itemsep1pt \parskip0pt \topsep2pt
-\item \textbf{Five controlled demonstrations} of cross-layer confounds in
-agentic coding evaluation, each reproduced from a released artifact with no paid
-API access (Section~\ref{sec:cases}).
-\item \textbf{A three-channel measurement architecture} and an operational
-validity contract defining when a task label may be assigned
-(Sections~\ref{sec:model} and~\ref{sec:arch}).
-\item \textbf{A reproducible artifact} enforcing nine validity invariants as
-regression tests, plus a minimum validity record we offer for discussion
-(Section~\ref{sec:arch}).
+\item \textbf{Formal.} We model infrastructure-invalid executions as censored
+outcomes and derive how horizon converts outcome-independent per-step failures
+into systematic, opposite-signed reliability bias (Section~\ref{sec:model}).
+\item \textbf{Empirical.} On $\approx$80k real software-engineering agent
+trajectories we quantify how the two common policies distort aggregate and
+model-level reliability across a predeclared hazard grid
+(Sections~\ref{sec:setup}--\ref{sec:results}).
+\item \textbf{Correction and artifact.} We evaluate censoring-aware estimation
+under known and misspecified censoring, and pair it with an instrumented
+harness that separates semantic failure from infrastructure invalidation
+(Section~\ref{sec:integrity}).
 \end{itemize}
 
-\section{A Measurement Integrity Model}
+\section{Agent Evaluation Under Censoring}
 \label{sec:model}
 
-We model an agentic evaluation as three channels that must not leak into one
-another.
+Let $Y_i\in\{0,1\}$ be the true semantic task outcome of execution $i$, $H_i$
+its horizon in agent decision steps, and $C_i\in\{0,1\}$ the indicator that the
+run stays infrastructure-valid long enough for $Y_i$ to be observed. The
+estimand is $p=\mathbb{E}[Y]$. Under a constant per-step invalidation hazard $q$
+applied independently of the agent's behaviour, with $s=1-q$,
+\begin{equation}
+\Pr(C_i=1\mid H_i=h)=s^{h}.
+\label{eq:survival}
+\end{equation}
+We assume $C \perp Y \mid H$ and $\mathbb{E}[s^{H}]>0$.
 
-\noindent\textbf{Online trajectory ($\mathcal{O}_t$).} Everything knowable at
-step $t$: commands, exit statuses, output sizes, token counts, repository state.
-Online behavioural features --- the inputs to any deployable monitor or
-early-abort policy --- must be computable from $\mathcal{O}_t$ alone. If a
-feature can see step $t{+}1$ or the final outcome, a reported ``early
-prediction'' is partly a readout of the answer.
+\paragraph{Proposition 1 (Horizon-induced censoring bias).}
+Under \eqref{eq:survival}, the complete-case (drop-invalid) estimand is
+$p_{\mathrm{drop}}=\mathbb{E}[Ys^{H}]/\mathbb{E}[s^{H}]$ and
+\begin{equation}
+p_{\mathrm{drop}}-p=\frac{\mathrm{Cov}(Y,s^{H})}{\mathbb{E}[s^{H}]}.
+\label{eq:drop}
+\end{equation}
+The invalid-as-failure estimand is $p_{\mathrm{fail}}=\mathbb{E}[Ys^{H}]$ and
+\begin{equation}
+p_{\mathrm{fail}}-p=\mathbb{E}\!\left[Y(s^{H}-1)\right]\le 0 .
+\label{eq:fail}
+\end{equation}
 
-\noindent\textbf{Provider telemetry ($\mathcal{P}$).} Physical API attempts,
-HTTP 503s, timeouts, quota events, infrastructure termination reasons. These
-describe the \emph{service}, not the agent. A retried 503 is not a reasoning
-error, and a run killed by a quota limit is not a task failure.
+\noindent\emph{Proof.} $\mathbb{E}[YC]=\mathbb{E}[Y\,\mathbb{E}[C\mid Y,H]]
+=\mathbb{E}[Ys^{H}]$ and $\mathbb{E}[C]=\mathbb{E}[s^{H}]$, so
+$p_{\mathrm{drop}}=\mathbb{E}[Ys^{H}]/\mathbb{E}[s^{H}]$; subtracting $p$ and
+writing $\mathbb{E}[Ys^{H}]-\mathbb{E}[Y]\mathbb{E}[s^{H}]=\mathrm{Cov}(Y,s^{H})$
+gives \eqref{eq:drop}. Scoring invalid runs as $0$ gives
+$p_{\mathrm{fail}}=\mathbb{E}[YC]=\mathbb{E}[Ys^{H}]$, and $s^{H}\le1$ with
+$Y\ge0$ gives \eqref{eq:fail}.\hfill$\square$
 
-\noindent\textbf{Offline evaluation ($\mathcal{E}$).} The benchmark verdict $Y$,
-computed in a clean state from official test data after the agent has stopped.
-$Y$ must never be visible to $\mathcal{O}_t$.
+The sign of the complete-case bias is therefore governed entirely by the
+association between outcome and horizon. Since $s^{H}$ decreases in $H$, if
+successful runs are \emph{shorter} then $\mathrm{Cov}(Y,s^{H})>0$ and dropping
+invalid runs \emph{overstates} reliability, while invalid-as-failure always
+understates it. The two policies bracket the truth from opposite sides, and the
+gap widens with $q$.
 
-Two directed constraints follow: $\mathcal{E} \not\rightarrow \mathcal{O}_t$ (no
-outcome leakage) and $\mathcal{P} \not\rightarrow \mathcal{O}_t$ as
-\emph{semantics} (infrastructure events may be logged, never treated as agent
-behaviour). Figure~\ref{fig:arch} shows the architecture.
+\paragraph{Censoring-aware estimation.}
+With $\pi_i=\Pr(C_i=1\mid H_i)=s^{H_i}$ known, the Horvitz--Thompson estimator
+$\hat p_{\mathrm{HT}}=n^{-1}\sum_i C_iY_i/\pi_i$ is unbiased, since
+$\mathbb{E}[C_iY_i/\pi_i]=\mathbb{E}[Y_i]$. The H\'ajek (stabilized) form
+$\hat p_{\mathrm{H}}=\sum_i C_iY_i/\pi_i \big/ \sum_i C_i/\pi_i$ is a ratio
+estimator: consistent, not exactly unbiased. Both degrade as $\pi_i\to0$ for
+long horizons, a positivity problem that no weighting fixes.
 
-\vspace{3pt}
-\noindent\fbox{\parbox{0.96\columnwidth}{\small
-\textbf{Operational validity contract.} A run $r$ is \emph{valid} when four
-conditions hold jointly. \textbf{Temporal:} its online measurements contain only
-information available at the measurement point, excluding future and final
-outcomes. \textbf{Infrastructure:} it terminated through a scientifically valid
-agent path, not a provider or runtime failure. \textbf{Evaluator:} its outcome
-came from the correctly configured, isolated offline evaluator.
-\textbf{Provenance:} its raw trajectory, state, and accounting artifacts are
-immutable and traceable to their execution identity. We assign
-$Y_{\text{success}}(r)$ \emph{only} when all four hold. This is the validity
-assumption our artifact implements and enforces --- not a theorem, and not a
-complete definition of evaluation validity.}}
+\paragraph{Scope.} These results assume independent per-step censoring with a
+known hazard. They do not cover correlated outages, adaptive provider quotas,
+retry policies, task-dependent infrastructure, multi-attempt inference, or
+unknown censoring mechanisms.
 
-\section{Failure Cases}
-\label{sec:cases}
+\section{Experimental Setup}
+\label{sec:setup}
 
-We instrumented a coding-agent harness (mini-SWE-agent scaffold, SWE-bench
-Verified instance, containerised execution) and recorded cases where a natural
-implementation choice silently corrupts a measured quantity.
-Table~\ref{tab:cases} gives each case, the layer the confound originates in, the
-scientific quantity it corrupts, and the measured evidence. All values are
-regenerated by one command; E1--E3 use a local container with no model
-inference, E4--E5 are pure Python.
+\paragraph{Data.} We use a public corpus of 80{,}036 SWE-agent trajectories
+\citep{nebius2025trajectories} (CC-BY-4.0), each with a ground-truth resolution
+label from benchmark test execution. We read only five pruned columns
+($\approx$0.6\,MB of a 1.11\,GB corpus). One row has no parsed agent step,
+leaving $n=80{,}035$. We do \emph{not} filter on the dataset's own
+\texttt{exit\_status}: its categories are strongly associated with success
+(resolve rate 0.248 for \texttt{submitted} vs.\ 0.000 for \texttt{exit\_context}),
+so filtering on it would condition on the outcome. Those statuses are part of
+the historical generating process, not our censoring.
 
-\noindent\textbf{E1 (evaluator $\rightarrow$ ground truth).} SWE-bench
-\texttt{FAIL\_TO\_PASS} ids often name parametrisations existing only
-\emph{after} the official \texttt{test\_patch} is applied. Without it, pytest
-exits 4 with ``no tests ran''; with it, exit 1 and 1 failed. Both arms report
-$\text{success}=\text{false}$, so a flag check sees nothing wrong --- but the
-first arm's ``0 failures'' is vacuous, and any consumer reading
-absence-of-failure as passing emits false successes.
+\paragraph{Horizon.} $H$ is the number of trajectory messages authored by the
+agent (\texttt{role="ai"}), i.e.\ agent decision turns; scaffold and environment
+turns are excluded. The definition was fixed before any censoring result was
+computed. We re-fetched 20 randomly chosen full trajectories (seed 20260905) and
+recounted independently: \textbf{20/20 exact agreement}. Our counts are
+deliberately about half the dataset card's step figures, which count both agent
+and environment messages; $2H{+}1$ reproduces the card exactly.
 
-\noindent\textbf{E2 (tool runtime $\rightarrow$ behavioural signal).} Agents
-pipe constantly. Without \texttt{set -o pipefail} a POSIX shell reports the last
-stage's status, so a failing command piped into \texttt{tail} is recorded as a
-successful tool call and every failure-rate feature is biased toward zero
-exactly when the agent is struggling.
+\paragraph{Censoring is semi-synthetic.} We inject censoring on top of this
+completed, labelled population. The hazard grid
+$q\in\{0,0.10,0.25,0.50,1.00,2.00\}\%$ per agent step was predeclared. It is a
+\textbf{sensitivity analysis}, not a measured outage rate for any provider.
+Because every trajectory has observed $Y$ and $H$, $p_{\mathrm{drop}}$ and
+$p_{\mathrm{fail}}$ are computed \emph{analytically}; Monte Carlo (200
+replicates, seeds derived from 20260905) is used only to validate the
+estimators.
 
-\noindent\textbf{E3 (environment $\rightarrow$ progress measurement).} Counting
-modified files with \texttt{docker diff} attributes the whole container to the
-agent. A command touching \emph{no} repository file moves that count from 0 to
-32 while the repository-scoped git measurement stays at 0; one real source edit
-then moves the container count to 33 --- indistinguishable from noise --- while
-git moves to exactly 1 file, 2 lines.
+\section{Results}
+\label{sec:results}
 
-\noindent\textbf{E4 (future/oracle $\rightarrow$ online feature).} We compute
-features from a length-$k$ prefix, then append 20 maximally predictive future
-steps (exit 127, \texttt{FATAL} output, $10^6$ tokens). Across 24 online
-features, 0 change; reading at or beyond the cut raises
-\texttt{PrefixBoundaryError} and the prefix exposes no outcome attribute. This
-is an adversarial regression test, not a proof: it shows the path is closed by
-construction rather than convention.
+\paragraph{The population is strongly horizon-asymmetric.}
+True reliability is $p=16.73\%$ (13{,}389 of 80{,}035). Resolved trajectories
+average $15.17$ agent steps (median 12); unresolved average $28.70$ (median 19).
+Success is markedly shorter, so Proposition~1 predicts $\mathrm{Cov}(Y,s^{H})>0$
+and an upward complete-case bias --- which is what we observe.
 
-\noindent\textbf{E5 (infrastructure $\rightarrow$ task label).} Enumerating all
-termination reasons, the three classified as provider infrastructure
-(unavailable, timeout, rate-limited) are structurally refused a $Y$ label by a
-schema validator; the five agent-semantic reasons accept one; 0 violations. This
-was not hypothetical for us. Eight provider-backed sessions on one free-tier
-account (two parent runs executing 9 and 4 agent steps, plus six continuations
-restored from parent checkpoints) all terminated on quota exhaustion. Under the
-contract all eight are invalid and carry no label; a harness scoring
-non-completing runs as $Y=0$ would have recorded eight fabricated task failures.
-
-Across all five cases the common pathology is cross-layer confounding:
-evaluator configuration, tool runtime, environment churn, future state, or
-provider infrastructure is inadvertently recorded as evidence about agent
-behaviour.
-
-\begin{table*}[t]
+\begin{table}[t]
 \centering
-\footnotesize
-\begin{tabular}{@{}p{1.75cm}p{1.5cm}p{2.6cm}p{5.5cm}p{4.0cm}@{}}
+\small
+\begin{tabular}{@{}lrrrr@{}}
 \toprule
-\textbf{Failure case} & \textbf{Source layer} & \textbf{Corrupted scientific quantity} & \textbf{Observed controlled evidence} & \textbf{Enforced invariant} \\
+$q$ & $p_{\mathrm{drop}}$ & $p_{\mathrm{fail}}$ & spread & retained \\
 \midrule
-E1 Missing \texttt{test\_patch} &
-Evaluator &
-Outcome / ground truth &
-Without the patch pytest exits 4, ``no tests ran'' (no test executed); with it, exit 1 and 1 failed &
-Evaluator isolation and correct configuration (I3) \\
-\addlinespace
-E2 Pipeline masking &
-Tool runtime &
-Behavioural failure signal &
-\texttt{false | tail -5} yields exit 1 under \texttt{pipefail} and exit 0 without; 2 of 3 probes fully masked &
-Exit-status preservation \\
-\addlinespace
-E3 Container-wide diff &
-Environment &
-Repository progress / state &
-Environment-only churn moves the container count $0\rightarrow32$ while repository-scoped stays 0; one edit gives 1 file, 2 lines &
-Repository-scoped measurement with a \texttt{measured} flag (I6) \\
-\addlinespace
-E4 Future access &
-Future / oracle &
-Online behavioural feature &
-20 appended adversarial future steps alter 0 of 24 prefix features; reads past the cut raise an error &
-Temporal boundary on the prefix (I1, I2) \\
-\addlinespace
-E5 Provider failure &
-Infrastructure &
-Sample validity / $Y_{\text{success}}$ &
-3 of 8 termination reasons are infrastructure and are refused a label, 0 violations; 8 quota-terminated sessions carry no label &
-Validity-state separation (I4, I5) \\
+0.00\% & 16.73 & 16.73 & 0.00 & 1.000 \\
+0.10\% & 16.91 & 16.48 & 0.44 & 0.974 \\
+0.25\% & 17.17 & 16.11 & 1.06 & 0.938 \\
+0.50\% & 17.57 & 15.53 & 2.04 & 0.884 \\
+1.00\% & 18.27 & 14.46 & 3.81 & 0.791 \\
+2.00\% & 19.42 & 12.61 & 6.82 & 0.649 \\
 \bottomrule
 \end{tabular}
-\caption{Five cross-layer measurement confounds. Each row names the layer the
-confounding signal originates in and the scientific quantity it corrupts. Every
-value is regenerated by the artifact's single reproduction command into
-machine-readable result files.}
-\label{tab:cases}
-\end{table*}
+\caption{Analytic reliability estimates (\%) under the two reporting policies.
+True $p=16.73\%$. ``Spread'' is the gap between policies on identical data;
+``retained'' is the expected fraction of runs remaining valid.}
+\label{tab:analytic}
+\end{table}
 
-\section{Reference Architecture and Artifact}
-\label{sec:arch}
+\paragraph{The reporting policy alone moves reliability by several points.}
+Table~\ref{tab:analytic} and Figure~\ref{fig:main} show the divergence.
+At a mild $q=0.5\%$ the two policies differ by 2.04 points on a 16.73\% base
+(a 12\% relative spread); at $q=2\%$ they differ by 6.82 points (41\% relative).
+Complete-case analysis overstates and invalid-as-failure understates, exactly as
+\eqref{eq:drop}--\eqref{eq:fail} require.
 
 \begin{figure}[t]
 \centering
-\begin{tikzpicture}[
-  font=\scriptsize,
-  chan/.style={draw, rounded corners=2pt, align=center,
-               minimum height=6.5mm, inner sep=2.5pt, fill=black!4},
-  out/.style={draw, rounded corners=2pt, align=center,
-              minimum height=6mm, inner sep=2.5pt, fill=black!10},
-  arr/.style={-{Latex[length=1.5mm]}, thick},
-  blocked/.style={-{Latex[length=1.5mm]}, thick, dashed, red!65!black}
-]
-\node[chan, text width=2.45cm] (agent)
-  {\textbf{Agent execution}\\model $\rightarrow$ tool $\rightarrow$ env};
-\node[chan, text width=2.45cm, right=7mm of agent] (prov)
-  {\textbf{Provider telemetry} $\mathcal{P}$\\attempts, 503, quota};
-\node[chan, text width=2.45cm, below=7mm of agent] (online)
-  {\textbf{Online trajectory} $\mathcal{O}_t$\\prefix of length $k$};
-\node[chan, text width=2.45cm, below=16mm of prov] (eval)
-  {\textbf{Offline evaluator} $\mathcal{E}$\\clean state $+$ \texttt{test\_patch}};
-\node[out, text width=2.45cm, below=7mm of online] (feat)
-  {\textbf{Online features}\\monitors, early abort};
-\node[out, text width=2.45cm, below=7mm of eval] (y)
-  {$Y_{\text{success}}$};
-
-\draw[arr] (agent) -- (online);
-\draw[arr] (online) -- (feat);
-\draw[arr] (agent) -- (prov);
-\draw[arr] (agent.south east) to[out=-45,in=170] (eval.west);
-\draw[arr] (eval) -- (y);
-
-\draw[blocked] (y.west) to[out=180,in=0]
-  node[midway,below,font=\tiny,text=red!65!black]{blocked (I2)} (feat.east);
-\draw[blocked] (prov.south west) to[out=225,in=25]
-  node[midway,above,font=\tiny,text=red!65!black]{not semantics (I4)} (online.east);
-\end{tikzpicture}
-\caption{Reference architecture. Agent execution feeds the online trajectory,
-provider telemetry, and (after termination) the offline evaluator. The two
-dashed edges are the ones that must not exist: benchmark outcome must never
-reach online features, and provider events must never become agent semantics.}
-\label{fig:arch}
+\includegraphics[width=\columnwidth]{figures/fig1_censoring_bias.pdf}
+\caption{Reported reliability against per-step infrastructure hazard on 80{,}035
+trajectories. The two standard policies diverge in opposite directions from the
+truth; IPCW tracks the true rate (shaded band: 95\% Monte Carlo interval over
+200 replicates).}
+\label{fig:main}
 \end{figure}
 
-The architecture instantiates Section~\ref{sec:model} as three separated
-channels. Online feature extraction is typed to accept only a
-\texttt{TrajectoryPrefix} --- an immutable copy of the first $k$ steps holding
-no outcome record --- so leakage is a type error rather than a code-review
-question. Provider retries and physical attempts are handled strictly below
-trajectory semantics, so a recovered 503 is invisible to behavioural features
-while remaining fully logged. The evaluator runs after termination in a clean
-state, resetting test files to the instance base commit before applying the
-official test patch, so the agent cannot influence the tests that judge it.
+\paragraph{The mechanism is visible in horizon strata.}
+Trajectories of 1--25 steps are 65.3\% of the corpus and succeed at 23.0\%;
+those beyond 75 steps are 4.4\% and succeed at 2.6\%. At $q=2\%$ the short
+stratum retains 77.6\% of runs but the long stratum only 10.5\%. Censoring
+preferentially deletes the long, low-success runs, which is precisely why the
+survivors look better than the population.
 
-\noindent\textbf{Reference invariants.} Our artifact enforces the following as
-regression tests. These are the invariants \emph{this} artifact implements, not
-a claim that they are universally necessary or sufficient.
+\paragraph{IPCW recovers the estimand when the mechanism is known.}
+Across 200 Monte Carlo replicates per hazard, Horvitz--Thompson bias never
+exceeds $0.007$ points, versus $+1.54$ and $-2.27$ points for the two policies
+at $q=1\%$. The cost is variance: HT standard deviation grows from $0.016$ to
+$0.096$ points as $q$ goes from $0.1\%$ to $2\%$, and the H\'ajek form grows
+faster ($0.125$ points at $q=2\%$) as some weights become large.
 
-\begin{quote}\small
-\textbf{I1} Online prefix cannot access future trajectory information.
-\textbf{I2} Online prefix cannot access $Y_{\text{success}}$.
-\textbf{I3} Evaluation state is isolated from agent execution state.
-\textbf{I4} Provider failures do not increment semantic failure features.
-\textbf{I5} Infrastructure-invalid runs receive no $Y_{\text{success}}$.
-\textbf{I6} Repository-change features are repository-scoped.
-\textbf{I7} Raw trajectory artifacts are immutable and hashed.
-\textbf{I8} Logical agent calls are distinct from physical provider attempts.
-\textbf{I9} Restored continuations receive new identities and cannot overwrite
-parents.
-\end{quote}
+\paragraph{Rankings did not reverse; effect sizes did distort.}
+Three models clear the predeclared $\geq$500-trajectory threshold. Across all
+six hazards and both policies we observed \textbf{zero pairwise ranking
+reversals} (3 pairs; Spearman $\rho=1.000$ throughout). We report this null
+result plainly: with three well-separated models (25.9\%, 16.7\%, 15.2\%) this
+is a weak test of ranking stability, and we do not claim rankings are generally
+safe. What does move is the apparent \emph{gap}: the 405b--8b difference is
+$10.71$ points truly, $15.01$ points under drop-invalid at $q=2\%$ (inflated
+$\approx$40\%) and $8.43$ points under invalid-as-failure (compressed
+$\approx$21\%). Comparative claims about margins are distorted even where
+ordering survives.
 
-The artifact ships 128 passing tests covering these invariants, including the
-adversarial case E4, negative cases for test-command detection, and
-provider-error classification. Every number here is regenerated by one
-deterministic command requiring no paid API. E4 and E5 run anywhere; E1--E3
-additionally need a local container runtime and one benchmark image.
+\paragraph{Correction depends on modelling the mechanism.}
+We censored under a hazard that doubles beyond step 25 while weighting under a
+constant-hazard approximation. HT bias moves from $\approx$0 to $-0.14$ points
+($q_0=0.5\%$) and $-0.26$ ($q_0=1\%$); H\'ajek to $+0.55$ and $+0.97$. The
+correction degrades gracefully here, but it degrades: IPCW does not rescue
+unknown or outcome-dependent censoring.
 
-\noindent\textbf{Minimum validity record.} The invariants are only auditable if
-runs carry enough provenance to check them. For each evaluation run we suggest
-recording at least: (1) validity status and, if invalid, the reason; (2)
-evaluator and benchmark configuration and version; (3) the temporal scope of any
-online features; (4) logical agent calls separately from physical provider
-attempts and events; and (5) immutable run and checkpoint identifiers or hashes.
-We offer these fields as a starting point for community discussion, not a
-complete reporting standard.
+\section{From Censoring to Measurement Integrity}
+\label{sec:integrity}
 
-\section{Discussion and Limitations}
+Censoring is only estimable if the harness records it. In our own instrumented
+runs it was not hypothetical: two provider-backed agent executions completed 9
+and 4 agent steps before rate-limit invalidation, and six continuations restored
+from checkpoints were invalidated before executing any step. No valid benchmark
+outcome existed for any of the eight, and our harness assigned none. We report
+this only to establish that infrastructure invalidation occurs; the large-scale
+study above is semi-synthetic and does \emph{not} use this event frequency as
+$q$, nor does it estimate any provider's reliability.
 
-\noindent\textbf{Limitations.} (1) These cases establish \emph{possibility and
-mechanism}, not \emph{prevalence}; we make no estimate of how often such defects
-occur in published harnesses. (2) The artifact is validated primarily for one
-coding-agent / SWE-bench-style setting, and the invariants need evaluation on
-other frameworks before being treated as general. (3) The provider events we
-report are case-study evidence from one free-tier account; they are \emph{not}
-estimates of any provider's service reliability. (4) \textbf{Real-provider
-replay stability remains unmeasured}: every continuation we launched was
-terminated by provider quota before executing a step, so we report no
-replay-fidelity result and no divergence measurement. (5) We report no
-predictor, scheduler, or large-scale agent-performance study, and no claim about
-agent success rates. (6) Our invariants may be incomplete; passing them is
-necessary for the validity conditions we state, not sufficient for validity in
-general.
+Making that distinction routine requires separating channels that harnesses
+commonly merge. Our artifact enforces, as regression tests, that online
+behavioural features see only a length-$k$ trajectory prefix and never the
+outcome; that provider events never increment semantic failure counters; that
+the evaluator runs in isolated state with the official test patch; that
+repository-change features are repository-scoped rather than container-wide; and
+that raw artifacts are immutable and hashed. Table~\ref{tab:invalidity} lists
+the invalidity sources we have controlled demonstrations for.
 
-\noindent\textbf{Question for the community.} What minimum validity and
-provenance information should accompany an agent benchmark result before that
-result can be interpreted as evidence about agent reliability? Answering it is a
-precondition for shared evaluation protocols and reusable artifacts in
-multi-step agent evaluation, and the record above is our attempt at a concrete
-starting point rather than a finished answer.
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{@{}p{2.5cm}p{5.0cm}@{}}
+\toprule
+\textbf{Source} & \textbf{Controlled demonstration} \\
+\midrule
+Evaluator & Omitting the official test patch makes the target test uncollectable: pytest exits 4, ``no tests ran'' \\
+Instrumentation & Without \texttt{pipefail}, a failing command piped to \texttt{tail} records exit 0 \\
+Environment & Env-only churn moves a container-wide change count $0\!\to\!32$ while repository-scoped stays 0 \\
+Temporal & 20 adversarial future steps alter 0 of 24 prefix features once the boundary is enforced \\
+Infrastructure & Provider-invalid terminations are structurally refused a $Y$ label \\
+\bottomrule
+\end{tabular}
+\caption{Sources of invalidity with controlled demonstrations in the artifact.
+Censoring (last row) is this paper's focus; the others motivate why validity
+must be recorded per run.}
+\label{tab:invalidity}
+\end{table}
+
+\paragraph{Minimum reporting.} We suggest agent reliability reports state, at
+minimum: validity status and invalidation reason per run; the censoring or
+retry mechanism and its rate; the horizon distribution by outcome; and which
+invalid-run policy produced the headline number. These are a starting point for
+discussion, not a standard.
 
 \section{Related Work}
 
-Where prior work studies how agents fail, we study when an execution should
-count as evidence about agent failure at all.
-\citet{zhao2026failure} analyse the onset, evolution, and recovery of
-coding-agent failures across a large set of complete trajectories;
-\citet{ruan2026doomed} predict eventual failure from early rounds to abort
-doomed episodes; and \citet{li2026early} derive online warning signals for
-wasted computation. Each presupposes that the trajectory record faithfully
-represents what happened --- the property we test. Complementary to these,
-\citet{gonuguntla2026replay} show that static replay under a substituted model
-scores a counterfactual world and use same-model controls to quantify replay
-noise; we focus instead on cross-layer integrity between execution,
-instrumentation, provider state, and evaluator output.
-\citet{weidinger2025evalscience} argue for maturing an evaluation science for
-generative AI with attention to validity and evaluation norms; we instantiate
-those concerns as concrete, regression-tested failure cases in multi-step
-coding-agent infrastructure. SWE-bench \citep{jimenez2024swebench} and its
-human-validated subset \citep{openai2024swebenchverified} supply the benchmark
-and evaluator methodology we instrument, and SWE-agent
-\citep{yang2024sweagent} established the agent-computer interface such harnesses
-build on. \citet{kapoor2024agentsthatmatter} identify methodological problems in
-agent benchmarking including inadequate holdout and cost-blind comparison; our
-scope is narrower, targeting measurement validity at layer boundaries. We do not
-claim to be first to observe any individual defect; the contribution is
-demonstrating them concretely under one abstraction and closing them with
-enforced invariants.
+Where prior work studies how agents fail, we study which executions may be
+counted as evidence at all. \citet{zhao2026failure} anatomise coding-agent
+failure as a process over complete trajectories; \citet{ruan2026doomed} abort
+doomed episodes early --- an intervention that is itself a censoring mechanism
+under our framing, and one whose hazard would need reporting;
+\citet{li2026early} derive online warning signals for wasted computation and
+encounter, but do not model, a missing-outcome population.
+\citet{gonuguntla2026replay} show static replay under a substituted model scores
+a counterfactual world; that concerns procedure validity rather than missing
+outcomes. Two recent papers use adjacent vocabulary with different content:
+\citet{wang2026interface} show a serving interface can suppress tool calls
+before evaluation, where ``censoring'' means output suppression rather than a
+missing-data mechanism, and \citet{raghu2026proper} extend proper scoring rules
+to administratively censored trajectories --- the closest work, though it scores
+predictions rather than estimating an aggregate benchmark parameter, and uses no
+inverse-probability weighting. On validity more broadly,
+\citet{kapoor2024agentsthatmatter}, \citet{weidinger2025evalscience},
+\citet{zhu2026guardrails} and \citet{chen2026judge} motivate rigorous evaluation
+constructs. Our estimators are classical
+\citep{horvitz1952generalization,robins1994estimation}; the contribution is the
+mapping onto agent benchmarks, the horizon-covariance result, and its magnitude
+on real trajectories. SWE-bench \citep{jimenez2024swebench,
+openai2024swebenchverified} and SWE-agent \citep{yang2024sweagent} supply the
+benchmark and scaffold lineage of our corpus. We do not claim to be first.
+
+\section{Limitations}
+
+(1) The censoring study is \textbf{semi-synthetic}: we inject censoring into a
+completed corpus rather than observing real outages. (2) The $q$ grid is a
+sensitivity analysis, not a measured provider outage rate. (3) The primary
+model assumes independent, constant per-step censoring; the stress test probes
+only one departure. (4) IPCW requires a correct and estimable censoring model,
+which real harnesses would have to fit rather than know. (5) Positivity and
+variance degrade for long horizons and high $q$. (6) Results come from one
+public software-engineering corpus with one scaffold family and three models;
+the ranking analysis has only three eligible models and is a weak test. (7) The
+real provider case demonstrates existence, not prevalence, and yields no
+reliability estimate. (8) Replication on other agent domains, scaffolds, and
+genuinely observed infrastructure failures remains future work.
 
 \section{Conclusion}
 
-Trustworthy agentic systems require trustworthy measurements, and in multi-step
-evaluation the measurement apparatus is itself a layered system whose boundaries
-can confound the variable being recorded. We demonstrated five controlled
-cross-layer confounds, gave an architecture and an operational validity contract
-that separate online trajectory state, provider telemetry, and offline
-evaluation, and released an artifact enforcing nine regression-tested
-invariants. The results are preliminary and methodological. We offer them as a
-concrete starting point for a shared discussion about what an agent evaluation
-harness must guarantee before its numbers can carry weight.
+An invalid execution is not a failed one. We showed that treating it as either a
+failure or a missing row biases reported agent reliability in opposite
+directions, that the bias arises from horizon compounding even when
+infrastructure failures are outcome-independent, and that on 80{,}035 real
+agent trajectories the reporting policy alone can move reported reliability by
+several points. Censoring-aware estimation recovers the intended estimand when
+the mechanism is known and degrades predictably when it is not. The practical
+implication is modest and concrete: agent evaluations should record validity per
+run, report the censoring mechanism, and say which policy produced the number.
 
 \bibliographystyle{aaai26}
 \bibliography{references}

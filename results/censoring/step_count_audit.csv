@@ -1,0 +1,21 @@
+row_offset,instance_id_api,instance_id_parquet,instance_id_match,parser_step_count,independent_ai_turns,nonempty_ai_turns,exact_match,total_messages_parquet,total_messages_api,role_breakdown,target,exit_status
+1765,ebroecker__canmatrix-470,ebroecker__canmatrix-470,True,24,24,24,True,49,49,"{""system"": 1, ""user"": 24, ""ai"": 24}",False,submitted
+7944,pydantic__pydantic-4361,pydantic__pydantic-4361,True,9,9,9,True,19,19,"{""system"": 1, ""user"": 9, ""ai"": 9}",False,submitted
+24015,softlayer__softlayer-python-1680,softlayer__softlayer-python-1680,True,14,14,14,True,29,29,"{""system"": 1, ""user"": 14, ""ai"": 14}",False,submitted
+25459,Sceptre__sceptre-1249,Sceptre__sceptre-1249,True,11,11,11,True,23,23,"{""system"": 1, ""user"": 11, ""ai"": 11}",False,submitted
+27926,pydantic__pydantic-2479,pydantic__pydantic-2479,True,40,40,40,True,81,81,"{""system"": 1, ""user"": 40, ""ai"": 40}",False,submitted (exit_context)
+29716,CSCfi__swift-browser-ui-41,CSCfi__swift-browser-ui-41,True,47,47,47,True,95,95,"{""system"": 1, ""user"": 47, ""ai"": 47}",False,submitted (exit_context)
+35593,ResearchObject__ro-crate-py-76,ResearchObject__ro-crate-py-76,True,25,25,25,True,51,51,"{""system"": 1, ""user"": 25, ""ai"": 25}",False,submitted (exit_format)
+36439,pydantic__pydantic-2384,pydantic__pydantic-2384,True,47,47,47,True,95,95,"{""system"": 1, ""user"": 47, ""ai"": 47}",False,submitted (exit_context)
+54257,iterative__dvc-9356,iterative__dvc-9356,True,10,10,10,True,21,21,"{""system"": 1, ""user"": 10, ""ai"": 10}",False,submitted
+57588,pydantic__pydantic-1562,pydantic__pydantic-1562,True,27,27,27,True,55,55,"{""system"": 1, ""user"": 27, ""ai"": 27}",False,submitted
+58251,asottile__pyupgrade-319,asottile__pyupgrade-319,True,9,9,9,True,19,19,"{""system"": 1, ""user"": 9, ""ai"": 9}",False,submitted
+58608,iterative__dvc-8738,iterative__dvc-8738,True,9,9,9,True,19,19,"{""system"": 1, ""user"": 9, ""ai"": 9}",False,submitted (exit_context)
+59076,Parquery__icontract-187,Parquery__icontract-187,True,8,8,8,True,17,17,"{""system"": 1, ""user"": 8, ""ai"": 8}",False,submitted
+59617,dwavesystems__dwave-cloud-client-325,dwavesystems__dwave-cloud-client-325,True,8,8,8,True,17,17,"{""system"": 1, ""user"": 8, ""ai"": 8}",False,submitted
+61410,iterative__dvc-6378,iterative__dvc-6378,True,11,11,11,True,23,23,"{""system"": 1, ""user"": 11, ""ai"": 11}",False,submitted
+61859,pypa__setuptools_scm-573,pypa__setuptools_scm-573,True,9,9,9,True,19,19,"{""system"": 1, ""user"": 9, ""ai"": 9}",True,submitted
+70901,omni-us__jsonargparse-370,omni-us__jsonargparse-370,True,17,17,17,True,35,35,"{""system"": 1, ""user"": 17, ""ai"": 17}",True,submitted
+72166,auth0__auth0-python-195,auth0__auth0-python-195,True,8,8,8,True,17,17,"{""system"": 1, ""user"": 8, ""ai"": 8}",True,submitted
+75214,petrobras__ross-966,petrobras__ross-966,True,12,12,12,True,25,25,"{""system"": 1, ""user"": 12, ""ai"": 12}",False,submitted
+76524,nipy__nipype-3325,nipy__nipype-3325,True,15,15,15,True,31,31,"{""system"": 1, ""user"": 15, ""ai"": 15}",True,submitted
