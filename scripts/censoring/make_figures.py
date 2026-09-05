@@ -67,7 +67,10 @@ def main() -> int:
 
     if two_panel:
         tau = json.loads(tau_path.read_text(encoding="utf-8"))
-        fig, axes = plt.subplots(1, 2, figsize=(7.0, 2.35))
+        # Height chosen so the full-width float leaves the main text within the
+        # 4-page limit. Font sizes below are in points and are unchanged, so
+        # labels stay exactly as legible as before.
+        fig, axes = plt.subplots(1, 2, figsize=(7.0, 2.02))
         sh = swe["population"]
         th = tau["population"]
         panel(axes[0], swe,

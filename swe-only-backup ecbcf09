@@ -1,0 +1,5 @@
+[33m1eb82e2[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mtas-censoring-final[m[33m)[m TAS 2026: statistical precision, partial identification, tau-bench replication
+[33mecbcf09[m TAS 2026: censoring-aware agent evaluation (new paper on branch)
+[33m035d4ab[m[33m ([m[1;32mphase0.5-real-agent-validation[m[33m)[m TAS 2026: acceptance-optimization pass (provenance audit + synthesis)
+[33m247d6c9[m TAS 2026: Overleaf-ready official AAAI package
+[33m00319fd[m TAS 2026 short paper: measurement integrity failure modes + artifact
