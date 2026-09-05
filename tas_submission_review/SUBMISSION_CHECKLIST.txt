@@ -7,7 +7,15 @@ Upload file:
 Type metadata from:
     tas_submission_review/EASYCHAIR_METADATA.txt   (LOCAL ONLY -- do not upload)
 
-[ ]  EasyChair URL is the AAAI Fall Symposium Series (FSS-26) site, TAS track
+*** DEADLINE WARNING -- READ FIRST ***
+The official TAS 2026 site states the submission deadline as
+SEPTEMBER 4, 2026. Today is September 5, 2026. You indicated a late-submission
+authorization through September 7 AoE. CONFIRM that extension with the TAS
+organisers (or fsschairs@aaai.org) BEFORE relying on it -- if EasyChair has
+closed, the package is ready but you will need the chairs to reopen it.
+
+[ ]  Late-submission authorization confirmed in writing (or EasyChair still open)
+[ ]  EasyChair: https://easychair.org/conferences/?conf=fss26  (FSS-26), TAS track
 [ ]  Submission type = Short Paper
 [ ]  Title entered EXACTLY:
          Invalid Is Not Failure: Infrastructure Censoring Bias in
@@ -31,6 +39,22 @@ Type metadata from:
 [ ]  Submission confirmation email received
 [ ]  Submission ID recorded here: ______________________
 
+
+FORMAT COMPLIANCE vs THE OFFICIAL TAS 2026 CFP  (verified 2026-09-05, 18/18 PASS)
+---------------------------------------------------------------------------------
+CFP requirement                                  This submission
+  "Short Papers (2-4 pages)"                     main text ends p4          PASS
+  "Page limits exclude references"               refs begin p4              PASS
+  "optional technical appendix may follow the
+   references and does not count"                appendix p5, after refs    PASS
+  "AAAI two-column, camera-ready style;
+   AAAI-27 kit; AAAI-26 also acceptable"         aaai2026.sty, two-column   PASS
+  "submissions are anonymous ... double-blind;
+   remove all author and affiliation info"       [submission] option;
+                                                 0 identity hits            PASS
+  AAAI style prohibitions                        no geometry/fullpage/
+                                                 hyperref/titlesec, no
+                                                 margin or font hacks       PASS
 
 ALREADY VERIFIED MECHANICALLY (no action needed)
 ------------------------------------------------

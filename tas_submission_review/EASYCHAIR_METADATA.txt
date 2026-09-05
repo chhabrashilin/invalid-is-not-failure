@@ -75,6 +75,8 @@ FILE TO UPLOAD
 --------------
 tas_submission_review/TAS2026_Anonymous_ShortPaper.pdf
 
+Submission site (confirmed): https://easychair.org/conferences/?conf=fss26
+
 Verified anonymous: no author name, affiliation, email, institution, username,
 local path, or repository URL appears in the source or the compiled PDF; PDF
 metadata carries no /Author field.
