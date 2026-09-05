@@ -124,3 +124,6 @@ paper/**/*.fls
 !tas_submission_review/**
 !tas_camera_ready_draft/
 !tas_camera_ready_draft/**
+
+# user-created local backup, not part of the deliverable
+swe-only-backup*
