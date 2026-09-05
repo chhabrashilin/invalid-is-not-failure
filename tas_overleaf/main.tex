@@ -7,7 +7,7 @@
 
 \documentclass[letterpaper]{article}
 
-\usepackage{aaai26}
+\usepackage[submission]{aaai2026}  % anonymous submission mode
 \usepackage{times}
 \usepackage{helvet}
 \usepackage{courier}
@@ -16,6 +16,7 @@
 \urlstyle{rm}
 \def\UrlFont{\rm}
 \usepackage{natbib}
+\usepackage{caption}
 \frenchspacing
 \setlength{\pdfpagewidth}{8.5in}
 \setlength{\pdfpageheight}{11in}
@@ -33,11 +34,11 @@
 \title{Invalid Is Not Failure:\\
 Infrastructure Censoring Bias in Long-Horizon Agent Evaluation}
 
-% ANONYMOUS SUBMISSION. Author and affiliation blocks are intentionally absent.
-% If the author kit version in use requires an \affiliations block to compile,
-% uncomment the empty one below (see UPLOAD_INSTRUCTIONS.txt, step 5).
+% ANONYMOUS SUBMISSION: per the AAAI-26 kit, write "Anonymous Submission" as the
+% sole author and leave affiliations empty. The [submission] package option
+% additionally suppresses the author block and the copyright notice.
 \author{Anonymous Submission}
-%\affiliations{}
+\affiliations{}
 
 \begin{document}
 \maketitle
@@ -274,10 +275,12 @@ because by \eqref{eq:fail} its bias scales with the base rate, which is
 corpus: the complete-case bias follows the outcome--horizon association, and the
 invalid-as-failure bias does not.
 
-\paragraph{Bounds are wide.} At $q=1\%$, \eqref{eq:bounds} gives
-$[14.5,35.3]$ for SWE-agent and $[48.3,60.9]$ for $\tau$-bench. Reporting a
-single number without stating the mechanism is a strong assumption, not a
-neutral default.
+\paragraph{Bounds are wide.} Evaluating \eqref{eq:bounds} at the \emph{expected}
+censored count under the declared mechanism (a realised run would give a nearby
+interval) gives, at $q=1\%$, $[14.5,35.3]$ for SWE-agent and $[48.3,60.9]$ for
+$\tau$-bench; at $q=2\%$, $[12.6,47.7]$ and $[42.4,65.9]$. Reporting a single
+number without stating the mechanism is a strong assumption, not a neutral
+default.
 
 \paragraph{The mechanism is visible in horizon strata.} On SWE-agent, runs of
 1--25 steps are 65.3\% of the corpus and succeed at 23.0\%; runs beyond 75 steps
@@ -386,7 +389,7 @@ worst. The practical implication is modest and concrete: record validity per
 run, report the censoring mechanism, and when it is unknown, report bounds
 instead of a number.
 
-\bibliographystyle{aaai26}
+\bibliographystyle{aaai2026}
 \bibliography{references}
 
 \appendix

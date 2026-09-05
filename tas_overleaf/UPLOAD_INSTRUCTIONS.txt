@@ -1,47 +1,69 @@
 OVERLEAF UPLOAD -- TAS 2026 anonymous short paper
 =================================================
 
-1. Download the official AAAI-26 author kit:
-      https://aaai.org/authorkit26/
-   (AAAI-27 kit also accepted by TAS; if you use it, change the two
-   "aaai26" strings in main.tex to "aaai27".)
+STATUS: this source has been COMPILED AND VERIFIED locally (Tectonic 0.17.0)
+against the official AAAI-26 style files. 5 pages total; main text ends on
+page 4; references then appendix. 0 errors, 0 overfull boxes, 0 undefined
+citations or references. See "Verified locally" below.
 
-2. Overleaf -> New Project -> Upload Project -> upload the AAAI author kit ZIP.
-   This gives you aaai26.sty and aaai26.bst in the project root.
+1. Download the official AAAI-26 author kit from https://aaai.org/authorkit26/
+   You need TWO files from it:  aaai2026.sty  and  aaai2026.bst
+   NOTE the names: aaai2026, NOT aaai26. (AAAI-27 kit is also accepted by TAS;
+   if you use it, change the two "aaai2026" strings in main.tex accordingly.)
 
-3. Into that same project, upload these two files from tas_overleaf/,
-   overwriting the kit's sample files if prompted:
+2. Overleaf -> New Project -> Blank Project (or Upload Project with the kit ZIP).
+   Put aaai2026.sty and aaai2026.bst in the project root.
+
+3. Upload from tas_overleaf/ into the same project root:
       main.tex
       references.bib
+      figures/fig1_censoring_bias.pdf      <-- keep it in a figures/ subfolder
 
 4. Menu -> Compiler: pdfLaTeX.  Menu -> Main document: main.tex.
-   Click Recompile. Overleaf runs bibtex automatically; if references show
-   as [?], hit Recompile once more.
+   Recompile. Overleaf runs bibtex automatically; if references show as [?],
+   press Recompile once more.
 
-5. ONLY IF it fails with an error about \affiliations:
-   open main.tex and uncomment the line   %\affiliations{}   (just below
-   \author{Anonymous Submission}). Recompile.
+5. Download PDF and submit to EasyChair.
 
-6. Download PDF and submit to EasyChair.
+ANONYMITY
+---------
+main.tex uses  \usepackage[submission]{aaai2026}  which suppresses the author
+block and the copyright notice, plus \author{Anonymous Submission} and an empty
+\affiliations{} -- exactly what the AAAI kit specifies for anonymous review.
+Verified: no author name, affiliation, email, username, path, institution, or
+repository URL appears in the source or in the compiled PDF. PDF metadata
+carries no /Author field.
 
-NOTES
------
-- No figure files are needed. Figure 1 is drawn inline with TikZ.
-- Do not add \usepackage{geometry}, fullpage, hyperref, titlesec or caption;
-  the AAAI style rejects them.
-- Keep letterpaper. Do not add page numbers.
-- The paper is anonymous: no authors, affiliations, acknowledgements,
-  repository URLs, or institution names appear anywhere in the source.
+REQUIRED FILES / PACKAGES
+-------------------------
+  aaai2026.sty, aaai2026.bst   -- from the author kit (NOT on CTAN; upload them)
+  times, helvet, courier       -- required by the kit
+  url, graphicx, natbib        -- required by the kit
+  caption                      -- required by the kit (do not pass options)
+  booktabs, amsmath, amssymb   -- used by this paper
+  figures/fig1_censoring_bias.pdf -- the only external asset
 
-PACKAGES REQUIRED (all standard in Overleaf's TeX Live)
--------------------------------------------------------
-  aaai26     -- from the official author kit (NOT on CTAN; you must upload it)
-  times, helvet, courier
-  url, graphicx, natbib
-  booktabs
-  tikz  + libraries: arrows.meta, positioning
+Do NOT add geometry, fullpage, hyperref, titlesec, or setspace; the AAAI style
+rejects them. Keep letterpaper. Do not add page numbers.
 
-BIBLIOGRAPHY
-------------
-  \bibliographystyle{aaai26}  -- aaai26.bst ships with the author kit.
-  8 references, all cited; no uncited entries; no broken keys.
+VERIFIED LOCALLY (Tectonic 0.17.0, official aaai2026.sty)
+---------------------------------------------------------
+  US Letter        MediaBox 0 0 612 792
+  pages            5 total; main text ends on page 4, references begin on
+                   page 4, appendix begins on page 5
+  main text        <= 4 pages excluding references  [MEETS TAS LIMIT]
+  overfull boxes   0 hbox, 0 vbox  (no overflow, nothing past the margins)
+  citations        20/20 resolve; 0 undefined citations; 0 undefined refs
+  errors           0
+  fonts            24 faces, all subset-embedded (18 FontFile streams)
+  metadata         Creator/Producer only; no /Author
+
+CAVEAT: the local build substituted Latin Modern where Times metrics were
+unavailable in the Tectonic bundle ("some font shapes were not available").
+Overleaf has the full font set, so its output may differ slightly. Times is
+narrower than Latin Modern, so the real build should be the same length or
+SHORTER -- the 4-page main-text result is a safe upper bound, not a risk. Still
+confirm the page count in Overleaf before submitting.
+
+main_reference_build.pdf in this folder is that local build, kept only as a
+reference/backup. Submit the Overleaf output.

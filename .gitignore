@@ -115,3 +115,6 @@ paper/**/*.fls
 # Censoring-study evidence files (small JSON/CSV/parquet) are part of the artifact.
 !results/censoring/
 !results/censoring/**
+
+# Local reference build of the submission PDF (Overleaf output is authoritative).
+!tas_overleaf/main_reference_build.pdf
