@@ -33,18 +33,38 @@ def load():
     H = np.asarray(tbl.column("step_count")).astype(np.int64)
     Y = np.asarray(tbl.column("target")).astype(np.float64)
     model = np.asarray(tbl.column("model_name"))
-    keep = H >= 1  # primary population: parseable trajectory with a target label
-    return H[keep], Y[keep], model[keep]
+    inst = np.asarray(tbl.column("instance_id"))
+    # Primary population: every row with a defined target label. The single
+    # H=0 row (context exhausted before the agent emitted a turn) is a
+    # legitimately labelled execution and is RETAINED: under pi=s^H it has
+    # observation probability s^0=1, so it is simply never censored. Excluding
+    # it would be filtering on an inconvenience rather than a principle.
+    keep = np.ones(len(H), dtype=bool)
+    return H[keep], Y[keep], model[keep], inst[keep]
 
 
-def analytic(H, Y, q):
-    """Expected estimands under P(C=1|H)=s^H, computed exactly (no simulation)."""
+def analytic(H, Y, q, weights=None):
+    """Induced estimands under pi(H)=s^H, computed exactly (no simulation).
+
+    `p_drop` is the complete-case *induced population estimand*
+    E[Y s^H]/E[s^H] = P(Y=1 | C=1) -- the probability limit of the
+    complete-case ratio estimator, NOT its exact finite-sample expectation
+    (the expectation of a ratio is not the ratio of expectations).
+
+    `p_fail` IS the exact expectation of (1/n) sum_i C_i Y_i, since that
+    estimator is linear in C.
+
+    `weights` optionally reweights the finite corpus (used for the
+    task-balanced robustness check).
+    """
     s = 1.0 - q
-    w = s ** H  # survival weight pi_i
-    p = Y.mean()
-    p_drop = float((Y * w).sum() / w.sum())
-    p_fail = float((Y * w).mean())
-    cov = float(np.mean(Y * w) - Y.mean() * w.mean())
+    w = s ** H  # observation probability pi_i
+    u = np.ones_like(Y) if weights is None else weights
+    u = u / u.sum()
+    p = float((u * Y).sum())
+    p_drop = float((u * Y * w).sum() / (u * w).sum())
+    p_fail = float((u * Y * w).sum())
+    cov = float((u * Y * w).sum() - p * (u * w).sum())
     return {
         "q": q,
         "p_true": float(p),
@@ -55,9 +75,15 @@ def analytic(H, Y, q):
         "rel_bias_drop_pct": (p_drop - p) / p * 100,
         "rel_bias_fail_pct": (p_fail - p) / p * 100,
         "cov_Y_sH": cov,
-        "E_sH": float(w.mean()),
-        "cov_over_EsH_pp": (cov / w.mean()) * 100,
-        "expected_retained_frac": float(w.mean()),
+        "E_sH": float((u * w).sum()),
+        "cov_over_EsH_pp": (cov / (u * w).sum()) * 100,
+        "expected_retained_frac": float((u * w).sum()),
+        # Assumption-free worst-case identification interval for p, using the
+        # EXPECTED censored count. S/N <= p <= (S+M)/N with S = observed
+        # successes, M = censored count, N = initiated runs.
+        "bound_lo": p_fail,
+        "bound_hi": float(p_fail + (1.0 - (u * w).sum())),
+        "bound_width": float(1.0 - (u * w).sum()),
     }
 
 
@@ -123,19 +149,33 @@ def stress_test(H, Y, q0, n_rep, seed):
 def main() -> int:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     FIG_DIR.mkdir(parents=True, exist_ok=True)
-    H, Y, model = load()
+    H, Y, model, inst = load()
     n = len(Y)
     p = float(Y.mean())
     print(f"population n={n}  p_true={p:.6f}  meanH={H.mean():.2f}")
     print(f"  meanH|Y=1 {H[Y == 1].mean():.2f}   meanH|Y=0 {H[Y == 0].mean():.2f}")
+    print(f"  H=0 rows retained: {(H == 0).sum()}")
 
     # ---------------- analytic (primary result) ----------------
     analytic_rows = [analytic(H, Y, q) for q in Q_GRID]
-    print(f"\n{'q':>7} {'p_drop':>9} {'p_fail':>9} {'bias_drop':>10} {'bias_fail':>10} {'retain':>7}")
+    print(f"\n{'q':>7} {'p_drop':>9} {'p_fail':>9} {'bias_drop':>10} {'bias_fail':>10} "
+          f"{'retain':>7} {'bounds':>16}")
     for r in analytic_rows:
         print(f"{r['q']:7.4f} {r['p_drop']:9.5f} {r['p_fail']:9.5f} "
               f"{r['bias_drop_pp']:+10.3f} {r['bias_fail_pp']:+10.3f} "
-              f"{r['expected_retained_frac']:7.3f}")
+              f"{r['expected_retained_frac']:7.3f} "
+              f"[{r['bound_lo']:.4f},{r['bound_hi']:.4f}]")
+
+    # ---------------- task-balanced robustness ----------------
+    # Each benchmark instance_id gets equal total weight, so repeated tasks and
+    # unequal per-model coverage cannot drive the estimand by count alone.
+    uniq, inv, counts = np.unique(inst, return_inverse=True, return_counts=True)
+    task_w = 1.0 / counts[inv]
+    task_rows = [analytic(H, Y, q, weights=task_w) for q in Q_GRID]
+    print(f"\ntask-balanced ({len(uniq)} unique instance_ids):")
+    for r in task_rows:
+        print(f"{r['q']:7.4f} p_true={r['p_true']:.5f} "
+              f"bias_drop={r['bias_drop_pp']:+.3f} bias_fail={r['bias_fail_pp']:+.3f}")
 
     # ---------------- Monte Carlo IPCW validation ----------------
     mc_rows = []
@@ -252,8 +292,15 @@ def main() -> int:
             "median_H_success": float(np.median(H[Y == 1])),
             "median_H_failure": float(np.median(H[Y == 0])),
             "max_H": int(H.max()),
+            "n_zero_step_rows": int((H == 0).sum()),
+            "population_rule": (
+                "all rows with a defined target label; the single H=0 row is "
+                "retained because pi=s^0=1 makes it never censored"
+            ),
         },
         "analytic": analytic_rows,
+        "task_balanced": task_rows,
+        "n_unique_instances": int(len(uniq)),
         "monte_carlo": mc_rows,
         "models": model_rows,
         "ranking": ranking_rows,

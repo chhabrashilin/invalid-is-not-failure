@@ -1,0 +1,21 @@
+row_index,file,line,task_id_raw,task_id_summary,task_id_match,model_summary,parser_step_count,independent_agent_turns,toolcall_turns,nl_turns,empty_turns,exact_match,role_breakdown,score
+109,DeepSeek-R1-0528.jsonl,109,retail_109,retail_109,True,deepseek-ai/DeepSeek-R1-0528,13,13,7,6,0,True,"{""system"": 1, ""user"": 7, ""assistant"": 13, ""tool"": 7}",1.0
+489,DeepSeek-V3.2-Exp-thinking-off.jsonl,159,retail_109,retail_109,True,deepseek-ai/DeepSeek-V3.2-Exp-thinking-off,12,12,7,5,0,True,"{""system"": 1, ""user"": 6, ""assistant"": 12, ""tool"": 7}",1.0
+1482,Qwen3-235B-A22B-Thinking-2507-FP8.jsonl,162,retail_112,retail_112,True,togetherai/Qwen/Qwen3-235B-A22B-Thinking-2507-FP8,18,18,12,6,0,True,"{""system"": 1, ""user"": 7, ""assistant"": 18, ""tool"": 12}",1.0
+1572,Qwen3-Coder-480B-A35B-Instruct-FP8.jsonl,87,retail_37,retail_37,True,togetherai/Qwen/Qwen3-Coder-480B-A35B-Instruct-FP8,8,8,4,4,0,True,"{""system"": 1, ""user"": 5, ""assistant"": 8, ""tool"": 4}",0.0
+1723,claude-4-opus-thinking-off.jsonl,73,retail_73,retail_73,True,anthropic/claude-4-opus-thinking-off,8,8,4,4,0,True,"{""system"": 1, ""user"": 5, ""assistant"": 8, ""tool"": 4}",1.0
+1834,claude-4-opus-thinking-on-10k.jsonl,19,retail_19,retail_19,True,anthropic/claude-4-opus-thinking-on-10k,17,17,11,6,0,True,"{""system"": 1, ""user"": 18, ""assistant"": 17, ""tool"": 11}",0.0
+2193,claude-4-sonnet-thinking-on-10k.jsonl,48,airline_48,airline_48,True,anthropic/claude-4-sonnet-thinking-on-10k,6,6,4,2,0,True,"{""system"": 1, ""user"": 6, ""assistant"": 6, ""tool"": 4}",1.0
+2250,claude-4-sonnet-thinking-on-10k.jsonl,105,retail_55,retail_55,True,anthropic/claude-4-sonnet-thinking-on-10k,22,22,14,8,0,True,"{""system"": 1, ""user"": 23, ""assistant"": 22, ""tool"": 14}",1.0
+3349,gpt-4.1-nano.jsonl,49,airline_49,airline_49,True,openai/gpt-4.1-nano,5,5,2,3,0,True,"{""system"": 1, ""user"": 4, ""assistant"": 5, ""tool"": 2}",0.0
+3561,gpt-4.1.jsonl,96,retail_46,retail_46,True,openai/gpt-4.1,13,13,5,8,0,True,"{""system"": 1, ""user"": 9, ""assistant"": 13, ""tool"": 5}",1.0
+3599,gpt-4.1.jsonl,134,retail_84,retail_84,True,openai/gpt-4.1,13,13,7,6,0,True,"{""system"": 1, ""user"": 7, ""assistant"": 13, ""tool"": 7}",1.0
+3621,gpt-4.1.jsonl,156,retail_106,retail_106,True,openai/gpt-4.1,18,18,6,12,0,True,"{""system"": 1, ""user"": 13, ""assistant"": 18, ""tool"": 6}",0.0
+3651,gpt-4o-20240806.jsonl,21,airline_21,airline_21,True,openai/gpt-4o-20240806,6,6,3,3,0,True,"{""system"": 1, ""user"": 4, ""assistant"": 6, ""tool"": 3}",1.0
+3687,gpt-4o-20240806.jsonl,57,retail_7,retail_7,True,openai/gpt-4o-20240806,11,11,5,6,0,True,"{""system"": 1, ""user"": 7, ""assistant"": 11, ""tool"": 5}",1.0
+3796,gpt-4o-mini.jsonl,1,retail_1,retail_1,True,openai/gpt-4o-mini,17,17,10,7,0,True,"{""system"": 1, ""user"": 8, ""assistant"": 17, ""tool"": 10}",0.0
+3812,gpt-4o-mini.jsonl,17,retail_17,retail_17,True,openai/gpt-4o-mini,8,8,3,5,0,True,"{""system"": 1, ""user"": 6, ""assistant"": 8, ""tool"": 3}",1.0
+4373,gpt-oss-120b.jsonl,83,retail_33,retail_33,True,togetherai/openai/gpt-oss-120b,16,16,6,10,0,True,"{""system"": 1, ""user"": 11, ""assistant"": 16, ""tool"": 6}",1.0
+4448,gpt-oss-120b.jsonl,158,retail_108,retail_108,True,togetherai/openai/gpt-oss-120b,20,20,12,8,0,True,"{""system"": 1, ""user"": 9, ""assistant"": 20, ""tool"": 12}",1.0
+4637,o3-high.jsonl,17,airline_17,airline_17,True,openai/o3-high,19,19,12,7,0,True,"{""system"": 1, ""user"": 8, ""assistant"": 19, ""tool"": 12}",1.0
+4721,o3-high.jsonl,101,retail_51,retail_51,True,openai/o3-high,9,9,5,4,0,True,"{""system"": 1, ""user"": 5, ""assistant"": 9, ""tool"": 5}",1.0

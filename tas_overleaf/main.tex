@@ -7,7 +7,6 @@
 
 \documentclass[letterpaper]{article}
 
-% --- REQUIRED by the AAAI author kit -----------------------------------
 \usepackage{aaai26}
 \usepackage{times}
 \usepackage{helvet}
@@ -21,7 +20,6 @@
 \setlength{\pdfpagewidth}{8.5in}
 \setlength{\pdfpageheight}{11in}
 
-% --- Additional packages actually used ---------------------------------
 \usepackage{booktabs}
 \usepackage{amsmath}
 \usepackage{amssymb}
@@ -33,7 +31,7 @@
 \setcounter{secnumdepth}{2}
 
 \title{Invalid Is Not Failure:\\
-Censoring-Aware Evaluation of Long-Horizon AI Agents}
+Infrastructure Censoring Bias in Long-Horizon Agent Evaluation}
 
 % ANONYMOUS SUBMISSION. Author and affiliation blocks are intentionally absent.
 % If the author kit version in use requires an \affiliations block to compile,
@@ -45,335 +43,390 @@ Censoring-Aware Evaluation of Long-Horizon AI Agents}
 \maketitle
 
 \begin{abstract}
-Long-running agents sometimes stop without producing a valid task outcome
-because the provider, runtime, or harness failed rather than the agent. Reported
-reliability then depends on a reporting choice: count such executions as
-failures, or drop them. We show these choices bias in \emph{opposite}
-directions, and that the bias is not benign even when infrastructure failures
-are independent of agent behaviour. Because a per-step failure hazard compounds
-over a trajectory, survival is $s^{H}$ in the horizon $H$, so censoring becomes
-informative whenever $H$ is associated with success. We derive
-$p_{\mathrm{drop}}-p=\mathrm{Cov}(Y,s^{H})/\mathbb{E}[s^{H}]$ and
-$p_{\mathrm{fail}}-p=\mathbb{E}[Y(s^{H}-1)]\le 0$. On 80{,}035 public
-software-engineering agent trajectories, where resolved runs average 15.2 agent
-steps and unresolved runs 28.7, a 1\% per-step hazard moves reported reliability
-from a true 16.73\% to 18.27\% (drop) or 14.46\% (fail): a 3.8-point spread from
-the reporting policy alone. Inverse-probability-of-censoring weighting recovers
-the true rate to within 0.01 points when the censoring model is known, and
-degrades predictably when it is not. We argue reliability reports should
-separate semantic failure from censoring and state the censoring mechanism.
+Long-running agents sometimes stop without a valid task outcome because the
+provider, runtime, or harness failed rather than the agent. Reported reliability
+then depends on a reporting choice: score such runs as failures, or drop them.
+We show these choices err in \emph{opposite} directions, and that the error
+persists even when infrastructure failures are independent of agent behaviour: a
+per-step hazard compounds to an observation probability $s^{H}$ in the horizon
+$H$, so censoring becomes informative whenever $H$ is associated with success.
+We give assumption-free identification bounds, then show the complete-case
+estimand satisfies $p_{\mathrm{cc}}-p=\mathrm{Cov}(Y,s^{H})/\mathbb{E}[s^{H}]$,
+while scoring invalid runs as failures always understates $p$. Two public
+corpora --- 80{,}036 software-engineering and 4{,}950 tool-agent trajectories
+--- behave exactly as the theory predicts: where successful runs are much
+shorter, dropping invalid runs inflates reliability by 2.7 points at a 2\%
+hazard; where horizons are nearly outcome-independent, that bias almost
+vanishes while invalid-as-failure still costs 12.6 points. Censoring-aware
+weighting recovers the estimand when the mechanism is known. We recommend
+benchmarks report validity counts and censoring sensitivity rather than silently
+choosing a policy.
 \end{abstract}
 
 \section{Introduction}
 
 A long-horizon agent run can end for two very different reasons. The agent can
 fail the task, or the measurement apparatus can fail the agent: a provider quota
-is exhausted, an API returns 503, a container dies, a harness times out. The
-first is evidence about the agent. The second is not. Yet benchmark reports
-usually reduce both to a single success rate, and the reduction happens through
-an unstated reporting policy --- either such runs are scored as failures, or
-they are dropped from the denominator.
+is exhausted, an API returns 503, a container dies, a harness times out. Only
+the first is evidence about the agent. Yet benchmark reports usually collapse
+both into one success rate through an unstated policy --- either invalid runs
+are scored as failures, or they are deleted.
 
-We are not the first to observe that agent benchmarks have validity problems
-\citep{kapoor2024agentsthatmatter,weidinger2025evalscience,zhu2026guardrails}.
-Our claim is narrower and, we think, underappreciated: \emph{the two obvious
-ways of handling invalid runs are biased in opposite directions, and neither is
-conservative.} The reason is structural. Suppose infrastructure failures are
-entirely independent of what the agent is doing, arriving with a small constant
-hazard $q$ at each agent decision step. A run of horizon $H$ then survives with
-probability $s^{H}$, $s=1-q$. Long runs are exposed more often. So even a
-perfectly outcome-independent per-step failure becomes \emph{informative at the
-trajectory level} the moment horizon is associated with success --- which, in
-practice, it strongly is: on the corpus we study, resolved trajectories average
-15.2 agent steps and unresolved ones 28.7.
+We are not the first to find validity problems in agent benchmarks
+\citep{kapoor2024agentsthatmatter,weidinger2025evalscience,zhu2026guardrails},
+and a recent audit finds that agent benchmark papers disclose little about their
+harness, inference, and failure handling \citep{moghadasi2026disclose}. Our
+claim is narrower: \emph{the two obvious ways of handling invalid runs are
+biased in opposite directions, and neither is conservative.} The reason is
+structural. Suppose infrastructure failures are entirely independent of what the
+agent is doing, arriving with a small constant hazard $q$ per agent decision
+step. A run of horizon $H$ then survives with probability $s^{H}$, $s=1-q$.
+Long runs are exposed more often, so an outcome-\emph{independent} per-step
+failure becomes informative \emph{at the trajectory level} as soon as horizon is
+associated with success. On our primary corpus resolved runs average 15.2 agent
+steps and unresolved runs 28.7.
 
-This is right-censoring, and the statistical machinery for it is standard
-\citep{horvitz1952generalization,robins1994estimation}. The contribution is the
-mapping, the direction result, and the magnitude on real agent data.
+\paragraph{Terminology.} We use \emph{censoring} operationally, to denote
+premature termination before a semantic endpoint is observed. Statistically this
+induces \emph{missing binary outcomes} through a sequential observation process;
+we do not claim the task outcome is a conventional time-to-event variable, and
+$H$ is a trajectory horizon rather than a clinical event time. We write
+$\pi_i$ for an \emph{observation probability}.
 
 \vspace{2pt}
 \noindent\textbf{Contributions.}
 \begin{itemize}\itemsep1pt \parskip0pt \topsep2pt
-\item \textbf{Formal.} We model infrastructure-invalid executions as censored
-outcomes and derive how horizon converts outcome-independent per-step failures
-into systematic, opposite-signed reliability bias (Section~\ref{sec:model}).
-\item \textbf{Empirical.} On $\approx$80k real software-engineering agent
-trajectories we quantify how the two common policies distort aggregate and
-model-level reliability across a predeclared hazard grid
-(Sections~\ref{sec:setup}--\ref{sec:results}).
-\item \textbf{Correction and artifact.} We evaluate censoring-aware estimation
-under known and misspecified censoring, and pair it with an instrumented
-harness that separates semantic failure from infrastructure invalidation
-(Section~\ref{sec:integrity}).
+\item \textbf{Formal.} Assumption-free identification bounds for reliability
+under censoring, and a bias identity showing horizon converts
+outcome-independent per-step failures into opposite-signed policy bias
+(Section~\ref{sec:model}).
+\item \textbf{Empirical.} Across two public corpora ($\approx$85k trajectories)
+we quantify how each policy distorts aggregate and model-level reliability over
+a predeclared hazard grid, including a case where the predicted bias is
+\emph{small} (Sections~\ref{sec:setup}--\ref{sec:results}).
+\item \textbf{Practice.} Censoring-aware estimation under known and
+misspecified mechanisms, and a minimum validity record for benchmark reports
+(Section~\ref{sec:practice}).
 \end{itemize}
 
-\section{Agent Evaluation Under Censoring}
+\section{Identification Under Censoring}
 \label{sec:model}
 
-Let $Y_i\in\{0,1\}$ be the true semantic task outcome of execution $i$, $H_i$
-its horizon in agent decision steps, and $C_i\in\{0,1\}$ the indicator that the
-run stays infrastructure-valid long enough for $Y_i$ to be observed. The
-estimand is $p=\mathbb{E}[Y]$. Under a constant per-step invalidation hazard $q$
-applied independently of the agent's behaviour, with $s=1-q$,
-\begin{equation}
-\Pr(C_i=1\mid H_i=h)=s^{h}.
-\label{eq:survival}
-\end{equation}
-We assume $C \perp Y \mid H$ and $\mathbb{E}[s^{H}]>0$.
+Let $Y_i\in\{0,1\}$ be the semantic task outcome, $H_i$ the horizon in agent
+decision steps, and $C_i\in\{0,1\}$ the indicator that run $i$ stays valid long
+enough for $Y_i$ to be observed. The estimand is $p=\mathbb{E}[Y]$.
 
-\paragraph{Proposition 1 (Horizon-induced censoring bias).}
-Under \eqref{eq:survival}, the complete-case (drop-invalid) estimand is
-$p_{\mathrm{drop}}=\mathbb{E}[Ys^{H}]/\mathbb{E}[s^{H}]$ and
+\paragraph{Proposition 1 (Assumption-free bounds).}
+Let $N$ be initiated runs, $M$ the censored count, and $S$ the observed
+successes among uncensored runs. With no assumption whatsoever about the
+outcomes of censored runs,
 \begin{equation}
-p_{\mathrm{drop}}-p=\frac{\mathrm{Cov}(Y,s^{H})}{\mathbb{E}[s^{H}]}.
-\label{eq:drop}
+S/N \;\le\; p \;\le\; (S+M)/N .
+\label{eq:bounds}
 \end{equation}
-The invalid-as-failure estimand is $p_{\mathrm{fail}}=\mathbb{E}[Ys^{H}]$ and
+\emph{Proof.} Each censored run contributes an unknown $Y\in\{0,1\}$; setting
+all to $0$ gives the lower endpoint and all to $1$ the upper.\hfill$\square$
+
+This is the agent-evaluation instance of a classical worst-case bound
+\citep{manski1990nonparametric}, and it reframes one policy immediately:
+$S/N$ --- invalid-as-failure --- is not an estimate of reliability but the
+\emph{lower endpoint of the identified interval}. Complete-case reporting
+$S/(N-M)$ estimates $P(Y=1\mid C=1)$, which equals $p$ only under a
+non-informative observation assumption.
+
+\paragraph{Observation model.} We now assume a constant per-step hazard applied
+independently of agent behaviour, so that
 \begin{equation}
-p_{\mathrm{fail}}-p=\mathbb{E}\!\left[Y(s^{H}-1)\right]\le 0 .
+\pi_i \;=\; \Pr(C_i=1\mid H_i)\;=\;s^{H_i},\qquad s=1-q,
+\label{eq:pi}
+\end{equation}
+together with $C\perp Y\mid H$ and $\mathbb{E}[s^{H}]>0$.
+
+\paragraph{Proposition 2 (Horizon-induced complete-case bias).}
+Under \eqref{eq:pi}, the complete-case \emph{induced estimand} is
+$p_{\mathrm{cc}}=\mathbb{E}[Ys^{H}]/\mathbb{E}[s^{H}]=P(Y{=}1\mid C{=}1)$ and
+\begin{equation}
+p_{\mathrm{cc}}-p=\frac{\mathrm{Cov}(Y,s^{H})}{\mathbb{E}[s^{H}]} .
+\label{eq:cc}
+\end{equation}
+\emph{Proof.} $\mathbb{E}[YC]=\mathbb{E}[Y\,\mathbb{E}[C\mid Y,H]]=\mathbb{E}[Ys^{H}]$
+and $\mathbb{E}[C]=\mathbb{E}[s^{H}]$; subtract $p$ and use
+$\mathbb{E}[Ys^{H}]-\mathbb{E}[Y]\mathbb{E}[s^{H}]=\mathrm{Cov}(Y,s^{H})$.\hfill$\square$
+
+Since $s^{H}$ decreases in $H$, the sign of the complete-case bias is the sign
+of the outcome--horizon association: if successes are \emph{shorter},
+$\mathrm{Cov}(Y,s^{H})>0$ and dropping invalid runs \emph{overstates}
+reliability. We stress that $p_{\mathrm{cc}}$ is the induced population
+estimand, i.e.\ the probability limit of the complete-case ratio estimator, not
+its exact finite-sample expectation --- the expectation of a ratio is not the
+ratio of expectations. Our Monte Carlo reports the estimator's realised mean
+separately.
+
+\paragraph{Proposition 3 (Invalid-as-failure).}
+$\hat p_{\mathrm{fail}}=n^{-1}\sum_i C_iY_i$ is linear in $C$, so it has exact
+conditional expectation $n^{-1}\sum_i \pi_i Y_i$, and
+\begin{equation}
+\mathbb{E}[\hat p_{\mathrm{fail}}]-p=\mathbb{E}\!\left[Y(s^{H}-1)\right]\le 0 .
 \label{eq:fail}
 \end{equation}
+The bias is at least $-p\,(1-\mathbb{E}[s^{H}])$ in magnitude \emph{regardless}
+of any outcome--horizon association, so it scales with the base rate.
 
-\noindent\emph{Proof.} $\mathbb{E}[YC]=\mathbb{E}[Y\,\mathbb{E}[C\mid Y,H]]
-=\mathbb{E}[Ys^{H}]$ and $\mathbb{E}[C]=\mathbb{E}[s^{H}]$, so
-$p_{\mathrm{drop}}=\mathbb{E}[Ys^{H}]/\mathbb{E}[s^{H}]$; subtracting $p$ and
-writing $\mathbb{E}[Ys^{H}]-\mathbb{E}[Y]\mathbb{E}[s^{H}]=\mathrm{Cov}(Y,s^{H})$
-gives \eqref{eq:drop}. Scoring invalid runs as $0$ gives
-$p_{\mathrm{fail}}=\mathbb{E}[YC]=\mathbb{E}[Ys^{H}]$, and $s^{H}\le1$ with
-$Y\ge0$ gives \eqref{eq:fail}.\hfill$\square$
+\paragraph{Proposition 4 (Weighted identification).}
+If $\pi_i>0$ is known or consistently estimable, the Horvitz--Thompson
+estimator $\hat p_{\mathrm{HT}}=n^{-1}\sum_i C_iY_i/\pi_i$ is exactly unbiased
+conditional on the finite population, since $\mathbb{E}[C_i/\pi_i]=1$
+\citep{horvitz1952generalization,robins1994estimation}. The H\'ajek form
+$\hat p_{\mathrm{H}}=\sum_i C_iY_i/\pi_i\big/\sum_i C_i/\pi_i$ is a ratio
+estimator: consistent and approximately unbiased, not exactly unbiased. Both
+degrade as $\pi_i\to0$, a positivity problem weighting cannot fix.
 
-The sign of the complete-case bias is therefore governed entirely by the
-association between outcome and horizon. Since $s^{H}$ decreases in $H$, if
-successful runs are \emph{shorter} then $\mathrm{Cov}(Y,s^{H})>0$ and dropping
-invalid runs \emph{overstates} reliability, while invalid-as-failure always
-understates it. The two policies bracket the truth from opposite sides, and the
-gap widens with $q$.
+\paragraph{Three levels of reporting.} Together these give a ladder.
+\emph{(L1) No assumptions:} report \eqref{eq:bounds}.
+\emph{(L2) Non-informative observation:} the complete-case reading may be
+justified. \emph{(L3) Modelled horizon-dependent observation:} weight or run a
+sensitivity analysis. IPCW does not solve arbitrary unknown or
+outcome-dependent censoring, and we do not claim it does.
 
-\paragraph{Censoring-aware estimation.}
-With $\pi_i=\Pr(C_i=1\mid H_i)=s^{H_i}$ known, the Horvitz--Thompson estimator
-$\hat p_{\mathrm{HT}}=n^{-1}\sum_i C_iY_i/\pi_i$ is unbiased, since
-$\mathbb{E}[C_iY_i/\pi_i]=\mathbb{E}[Y_i]$. The H\'ajek (stabilized) form
-$\hat p_{\mathrm{H}}=\sum_i C_iY_i/\pi_i \big/ \sum_i C_i/\pi_i$ is a ratio
-estimator: consistent, not exactly unbiased. Both degrade as $\pi_i\to0$ for
-long horizons, a positivity problem that no weighting fixes.
-
-\paragraph{Scope.} These results assume independent per-step censoring with a
-known hazard. They do not cover correlated outages, adaptive provider quotas,
-retry policies, task-dependent infrastructure, multi-attempt inference, or
-unknown censoring mechanisms.
-
-\section{Experimental Setup}
+\section{Setup}
 \label{sec:setup}
 
-\paragraph{Data.} We use a public corpus of 80{,}036 SWE-agent trajectories
-\citep{nebius2025trajectories} (CC-BY-4.0), each with a ground-truth resolution
-label from benchmark test execution. We read only five pruned columns
-($\approx$0.6\,MB of a 1.11\,GB corpus). One row has no parsed agent step,
-leaving $n=80{,}035$. We do \emph{not} filter on the dataset's own
-\texttt{exit\_status}: its categories are strongly associated with success
-(resolve rate 0.248 for \texttt{submitted} vs.\ 0.000 for \texttt{exit\_context}),
-so filtering on it would condition on the outcome. Those statuses are part of
-the historical generating process, not our censoring.
+\paragraph{Corpora.} \emph{Primary:} 80{,}036 SWE-agent
+\citep{yang2024sweagent} trajectories \citep{nebius2025trajectories}
+(CC-BY-4.0) on SWE-bench-style tasks
+\citep{jimenez2024swebench,openai2024swebenchverified}, each with a
+ground-truth resolution label from test execution; we read five pruned columns
+($\approx$0.6\,MB of a 1.11\,GB corpus).
+\emph{Secondary:} 4{,}950 $\tau$-bench trajectories
+\citep{agentsuite2026taubench,yao2024taubench} over 29 model identifiers and
+165 tasks each, with strictly binary \texttt{score}. We retain every labelled
+row. In the SWE corpus one row has $H=0$ (context exhausted before the agent
+acted); it is kept, since $\pi=s^{0}=1$ makes it never censored. We do not
+filter on the datasets' own exit statuses, which are associated with success
+(resolve rate 0.248 for \texttt{submitted} vs.\ 0.000 for
+\texttt{exit\_context}) and are part of the historical generating process, not
+our censoring.
 
-\paragraph{Horizon.} $H$ is the number of trajectory messages authored by the
-agent (\texttt{role="ai"}), i.e.\ agent decision turns; scaffold and environment
-turns are excluded. The definition was fixed before any censoring result was
-computed. We re-fetched 20 randomly chosen full trajectories (seed 20260905) and
-recounted independently: \textbf{20/20 exact agreement}. Our counts are
-deliberately about half the dataset card's step figures, which count both agent
-and environment messages; $2H{+}1$ reproduces the card exactly.
+\paragraph{Horizon.} $H$ counts agent decision turns only --- \texttt{role="ai"}
+in the SWE corpus, \texttt{role="assistant"} in $\tau$-bench --- excluding
+system, simulated-user, and tool turns. Both definitions were fixed before any
+censoring result. We re-fetched 20 full trajectories per corpus (seed 20260905)
+and recounted independently: \textbf{20/20 exact agreement in both}. Our SWE
+counts are deliberately about half the dataset card's, which counts environment
+turns too; $2H{+}1$ reproduces the card.
 
-\paragraph{Censoring is semi-synthetic.} We inject censoring on top of this
-completed, labelled population. The hazard grid
-$q\in\{0,0.10,0.25,0.50,1.00,2.00\}\%$ per agent step was predeclared. It is a
-\textbf{sensitivity analysis}, not a measured outage rate for any provider.
-Because every trajectory has observed $Y$ and $H$, $p_{\mathrm{drop}}$ and
-$p_{\mathrm{fail}}$ are computed \emph{analytically}; Monte Carlo (200
-replicates, seeds derived from 20260905) is used only to validate the
-estimators.
+\paragraph{Censoring is semi-synthetic; results are a finite-corpus sensitivity
+analysis.} We inject censoring onto completed, labelled corpora. The grid
+$q\in\{0,0.10,0.25,0.50,1.00,2.00\}\%$ per agent step was predeclared and is a
+\textbf{sensitivity analysis, not a measured outage rate}. Because these corpora
+contain repeated tasks and unequal model coverage, we do not treat rows as
+i.i.d.\ draws from a universal agent population: our quantities describe what
+would happen \emph{to these corpora} under declared mechanisms, and Monte Carlo
+intervals (200 replicates, seeds from 20260905) reflect injected censoring
+randomness only, not sampling uncertainty about a wider population.
 
 \section{Results}
 \label{sec:results}
 
-\paragraph{The population is strongly horizon-asymmetric.}
-True reliability is $p=16.73\%$ (13{,}389 of 80{,}035). Resolved trajectories
-average $15.17$ agent steps (median 12); unresolved average $28.70$ (median 19).
-Success is markedly shorter, so Proposition~1 predicts $\mathrm{Cov}(Y,s^{H})>0$
-and an upward complete-case bias --- which is what we observe.
-
 \begin{table}[t]
 \centering
 \small
-\begin{tabular}{@{}lrrrr@{}}
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}lrrrrrr@{}}
 \toprule
-$q$ & $p_{\mathrm{drop}}$ & $p_{\mathrm{fail}}$ & spread & retained \\
+& & true & $\bar H$ & $\bar H$ & drop & fail \\
+corpus & $N$ & $p$ & succ & fail & @1\% & @1\% \\
 \midrule
-0.00\% & 16.73 & 16.73 & 0.00 & 1.000 \\
-0.10\% & 16.91 & 16.48 & 0.44 & 0.974 \\
-0.25\% & 17.17 & 16.11 & 1.06 & 0.938 \\
-0.50\% & 17.57 & 15.53 & 2.04 & 0.884 \\
-1.00\% & 18.27 & 14.46 & 3.81 & 0.791 \\
-2.00\% & 19.42 & 12.61 & 6.82 & 0.649 \\
+SWE-agent & 80{,}036 & 16.73 & 15.2 & 28.7 & $+1.54$ & $-2.27$ \\
+$\tau$-bench & 4{,}950 & 55.03 & 13.1 & 14.2 & $+0.23$ & $-6.75$ \\
 \bottomrule
 \end{tabular}
-\caption{Analytic reliability estimates (\%) under the two reporting policies.
-True $p=16.73\%$. ``Spread'' is the gap between policies on identical data;
-``retained'' is the expected fraction of runs remaining valid.}
-\label{tab:analytic}
+\caption{Cross-domain summary. Success rates and biases in percentage points at
+$q=1\%$. Complete-case bias tracks the horizon gap (13.5 steps vs.\ 1.1);
+invalid-as-failure bias tracks the base rate instead.}
+\label{tab:cross}
 \end{table}
 
-\paragraph{The reporting policy alone moves reliability by several points.}
-Table~\ref{tab:analytic} and Figure~\ref{fig:main} show the divergence.
-At a mild $q=0.5\%$ the two policies differ by 2.04 points on a 16.73\% base
-(a 12\% relative spread); at $q=2\%$ they differ by 6.82 points (41\% relative).
-Complete-case analysis overstates and invalid-as-failure understates, exactly as
-\eqref{eq:drop}--\eqref{eq:fail} require.
-
-\begin{figure}[t]
+\begin{figure*}[t]
 \centering
-\includegraphics[width=\columnwidth]{figures/fig1_censoring_bias.pdf}
-\caption{Reported reliability against per-step infrastructure hazard on 80{,}035
-trajectories. The two standard policies diverge in opposite directions from the
-truth; IPCW tracks the true rate (shaded band: 95\% Monte Carlo interval over
-200 replicates).}
+\includegraphics[width=\textwidth]{figures/fig1_censoring_bias.pdf}
+\caption{Reported reliability against per-step infrastructure hazard.
+\textbf{(a)} SWE-agent: successes are much shorter, so dropping invalid runs
+inflates reliability steeply. \textbf{(b)} $\tau$-bench: horizons are nearly
+outcome-independent, so the complete-case curve is almost flat while
+invalid-as-failure still falls sharply. IPCW tracks the truth in both (shaded:
+95\% Monte Carlo interval, 200 replicates). Note the different $y$ ranges: base
+rates are 16.7\% and 55.0\%.}
 \label{fig:main}
-\end{figure}
+\end{figure*}
 
-\paragraph{The mechanism is visible in horizon strata.}
-Trajectories of 1--25 steps are 65.3\% of the corpus and succeed at 23.0\%;
-those beyond 75 steps are 4.4\% and succeed at 2.6\%. At $q=2\%$ the short
-stratum retains 77.6\% of runs but the long stratum only 10.5\%. Censoring
-preferentially deletes the long, low-success runs, which is precisely why the
-survivors look better than the population.
+\paragraph{The two corpora dissociate the two biases.}
+Table~\ref{tab:cross} and Figure~\ref{fig:main} are the main result. On
+SWE-agent, successes are far shorter (15.2 vs.\ 28.7 steps), so
+$\mathrm{Cov}(Y,s^{H})>0$ and complete-case reporting inflates reliability:
+$+0.84$ points at $q=0.5\%$ and $+2.69$ at $q=2\%$, against $-1.20$ and $-4.12$
+for invalid-as-failure --- a 6.8-point spread between two defensible policies on
+identical data. On $\tau$-bench the horizon gap is only 1.1 steps, and exactly
+as \eqref{eq:cc} predicts the complete-case bias nearly vanishes ($+0.40$ points
+at $q=2\%$). Yet invalid-as-failure is \emph{worse} there ($-12.64$ points),
+because by \eqref{eq:fail} its bias scales with the base rate, which is
+55.0\%. This is the prediction of the theory, not a reproduction of the first
+corpus: the complete-case bias follows the outcome--horizon association, and the
+invalid-as-failure bias does not.
+
+\paragraph{Bounds are wide.} At $q=1\%$, \eqref{eq:bounds} gives
+$[14.5,35.3]$ for SWE-agent and $[48.3,60.9]$ for $\tau$-bench. Reporting a
+single number without stating the mechanism is a strong assumption, not a
+neutral default.
+
+\paragraph{The mechanism is visible in horizon strata.} On SWE-agent, runs of
+1--25 steps are 65.3\% of the corpus and succeed at 23.0\%; runs beyond 75 steps
+are 4.4\% and succeed at 2.6\%. At $q=2\%$ the short stratum retains 77.6\% of
+runs, the long stratum 10.5\%. Censoring preferentially deletes long,
+low-success runs, which is why survivors look better.
 
 \paragraph{IPCW recovers the estimand when the mechanism is known.}
-Across 200 Monte Carlo replicates per hazard, Horvitz--Thompson bias never
-exceeds $0.007$ points, versus $+1.54$ and $-2.27$ points for the two policies
-at $q=1\%$. The cost is variance: HT standard deviation grows from $0.016$ to
-$0.096$ points as $q$ goes from $0.1\%$ to $2\%$, and the H\'ajek form grows
-faster ($0.125$ points at $q=2\%$) as some weights become large.
+Horvitz--Thompson bias never exceeds $0.005$ points (SWE) or $0.017$ points
+($\tau$-bench) at any hazard. The cost is variance: HT standard deviation grows
+from $0.016$ to $0.096$ points (SWE) as $q$ goes $0.1\%\!\to\!2\%$. Under a
+misspecified mechanism --- censoring with a hazard that doubles beyond step 25,
+weighting as if constant --- HT bias moves to $-0.14$ ($q_0=0.5\%$) and $-0.26$
+points ($q_0=1\%$), and H\'ajek to $+0.55$ and $+0.97$. Correction degrades
+gracefully here, but it does degrade.
 
-\paragraph{Rankings did not reverse; effect sizes did distort.}
-Three models clear the predeclared $\geq$500-trajectory threshold. Across all
-six hazards and both policies we observed \textbf{zero pairwise ranking
-reversals} (3 pairs; Spearman $\rho=1.000$ throughout). We report this null
-result plainly: with three well-separated models (25.9\%, 16.7\%, 15.2\%) this
-is a weak test of ranking stability, and we do not claim rankings are generally
-safe. What does move is the apparent \emph{gap}: the 405b--8b difference is
-$10.71$ points truly, $15.01$ points under drop-invalid at $q=2\%$ (inflated
-$\approx$40\%) and $8.43$ points under invalid-as-failure (compressed
-$\approx$21\%). Comparative claims about margins are distorted even where
-ordering survives.
+\paragraph{Ranking distortion is real but rare.}
+With 29 eligible $\tau$-bench models ($\geq$100 trajectories; 406 pairs, average
+ranks for ties) the first pairwise reversal appears at $q=0.5\%$ under both
+policies. At $q=2\%$ complete-case produces 2 reversals ($\rho=0.998$,
+$\tau_b=0.984$) and invalid-as-failure 11 ($\rho=0.990$, $\tau_b=0.939$). On
+SWE-agent, with only 3 eligible models, we observed \textbf{zero} reversals at
+every hazard --- a weak test we report as such. Ordering is fairly robust;
+\emph{margins} are not, and comparative claims about gaps are the vulnerable
+ones.
 
-\paragraph{Correction depends on modelling the mechanism.}
-We censored under a hazard that doubles beyond step 25 while weighting under a
-constant-hazard approximation. HT bias moves from $\approx$0 to $-0.14$ points
-($q_0=0.5\%$) and $-0.26$ ($q_0=1\%$); H\'ajek to $+0.55$ and $+0.97$. The
-correction degrades gracefully here, but it degrades: IPCW does not rescue
-unknown or outcome-dependent censoring.
+\paragraph{Task balancing does not change the conclusion.}
+Weighting each benchmark task equally rather than each trajectory, the SWE base
+rate falls from 16.73\% to 9.80\% but the $q=1\%$ biases keep their sign and
+order of magnitude ($+1.14$/$-1.30$ points); on $\tau$-bench the base rate moves
+55.0\%$\to$56.9\% with biases $+0.22$/$-7.29$. The directional result is not an
+artifact of unequal task or model coverage.
 
-\section{From Censoring to Measurement Integrity}
-\label{sec:integrity}
+\section{From Estimand to Practice}
+\label{sec:practice}
 
-Censoring is only estimable if the harness records it. In our own instrumented
-runs it was not hypothetical: two provider-backed agent executions completed 9
-and 4 agent steps before rate-limit invalidation, and six continuations restored
-from checkpoints were invalidated before executing any step. No valid benchmark
-outcome existed for any of the eight, and our harness assigned none. We report
-this only to establish that infrastructure invalidation occurs; the large-scale
-study above is semi-synthetic and does \emph{not} use this event frequency as
-$q$, nor does it estimate any provider's reliability.
+Infrastructure invalidation is not hypothetical. In our own instrumented runs,
+two provider-backed agent executions completed 9 and 4 agent steps before
+rate-limit invalidation, and six continuations restored from checkpoints were
+invalidated before executing any step; no valid outcome existed for any of the
+eight, and our harness assigned none. We report this only as an existence
+demonstration --- it is not a provider reliability estimate, and its frequency
+is \emph{not} used as $q$ anywhere above.
 
-Making that distinction routine requires separating channels that harnesses
-commonly merge. Our artifact enforces, as regression tests, that online
-behavioural features see only a length-$k$ trajectory prefix and never the
-outcome; that provider events never increment semantic failure counters; that
-the evaluator runs in isolated state with the official test patch; that
-repository-change features are repository-scoped rather than container-wide; and
-that raw artifacts are immutable and hashed. Table~\ref{tab:invalidity} lists
-the invalidity sources we have controlled demonstrations for.
-
-\begin{table}[t]
-\centering
-\small
-\begin{tabular}{@{}p{2.5cm}p{5.0cm}@{}}
-\toprule
-\textbf{Source} & \textbf{Controlled demonstration} \\
-\midrule
-Evaluator & Omitting the official test patch makes the target test uncollectable: pytest exits 4, ``no tests ran'' \\
-Instrumentation & Without \texttt{pipefail}, a failing command piped to \texttt{tail} records exit 0 \\
-Environment & Env-only churn moves a container-wide change count $0\!\to\!32$ while repository-scoped stays 0 \\
-Temporal & 20 adversarial future steps alter 0 of 24 prefix features once the boundary is enforced \\
-Infrastructure & Provider-invalid terminations are structurally refused a $Y$ label \\
-\bottomrule
-\end{tabular}
-\caption{Sources of invalidity with controlled demonstrations in the artifact.
-Censoring (last row) is this paper's focus; the others motivate why validity
-must be recorded per run.}
-\label{tab:invalidity}
-\end{table}
-
-\paragraph{Minimum reporting.} We suggest agent reliability reports state, at
-minimum: validity status and invalidation reason per run; the censoring or
-retry mechanism and its rate; the horizon distribution by outcome; and which
-invalid-run policy produced the headline number. These are a starting point for
-discussion, not a standard.
+\paragraph{Minimum validity record.} We suggest a benchmark report state, at
+minimum: (1) initiated runs; (2) runs reaching valid semantic evaluation;
+(3) invalid/censored counts by reason; (4) the horizon or resource-at-risk
+distribution; (5) the policy applied to censored outcomes; and (6) sensitivity
+of the headline number to plausible censoring mechanisms. When the mechanism is
+not defensibly known, report bounds or a sensitivity range rather than silently
+deleting runs or scoring them as failures. Recording this is cheap; our artifact
+enforces the underlying separations --- online features never see the outcome,
+provider events never increment semantic failure counters, and
+infrastructure-invalid runs are structurally refused a label --- as regression
+tests.
 
 \section{Related Work}
 
 Where prior work studies how agents fail, we study which executions may be
-counted as evidence at all. \citet{zhao2026failure} anatomise coding-agent
-failure as a process over complete trajectories; \citet{ruan2026doomed} abort
-doomed episodes early --- an intervention that is itself a censoring mechanism
-under our framing, and one whose hazard would need reporting;
-\citet{li2026early} derive online warning signals for wasted computation and
-encounter, but do not model, a missing-outcome population.
+counted as evidence. \citet{zhao2026failure} anatomise coding-agent failure over
+complete trajectories; \citet{ruan2026doomed} abort doomed episodes early, an
+intervention that is itself a censoring mechanism under our framing and whose
+hazard would need reporting; \citet{li2026early} derive online warning signals
+and encounter, but do not model, a missing-outcome population.
 \citet{gonuguntla2026replay} show static replay under a substituted model scores
-a counterfactual world; that concerns procedure validity rather than missing
-outcomes. Two recent papers use adjacent vocabulary with different content:
-\citet{wang2026interface} show a serving interface can suppress tool calls
-before evaluation, where ``censoring'' means output suppression rather than a
-missing-data mechanism, and \citet{raghu2026proper} extend proper scoring rules
-to administratively censored trajectories --- the closest work, though it scores
-predictions rather than estimating an aggregate benchmark parameter, and uses no
-inverse-probability weighting. On validity more broadly,
+a counterfactual world --- procedure validity rather than missing outcomes. Two
+papers use adjacent vocabulary: \citet{wang2026interface} use ``censoring'' for
+interface-level output suppression, with no missing-data model, and
+\citet{raghu2026proper} extend proper scoring rules to administratively censored
+trajectories, the closest work, though it scores predictions rather than
+identifying an aggregate benchmark estimand and uses no inverse-probability
+weighting. On validity and disclosure more broadly,
 \citet{kapoor2024agentsthatmatter}, \citet{weidinger2025evalscience},
-\citet{zhu2026guardrails} and \citet{chen2026judge} motivate rigorous evaluation
-constructs. Our estimators are classical
-\citep{horvitz1952generalization,robins1994estimation}; the contribution is the
-mapping onto agent benchmarks, the horizon-covariance result, and its magnitude
-on real trajectories. SWE-bench \citep{jimenez2024swebench,
-openai2024swebenchverified} and SWE-agent \citep{yang2024sweagent} supply the
-benchmark and scaffold lineage of our corpus. We do not claim to be first.
+\citet{zhu2026guardrails}, \citet{chen2026judge} and \citet{moghadasi2026disclose}
+are complementary: disclosure tells readers what happened, whereas we study how
+missing semantic outcomes change the estimand itself. Our estimators are
+classical \citep{horvitz1952generalization,robins1994estimation,manski1990nonparametric};
+the contribution is the mapping onto agent benchmarks, the horizon-covariance
+result, and its magnitude on real trajectories. We do not claim to be first.
 
 \section{Limitations}
 
-(1) The censoring study is \textbf{semi-synthetic}: we inject censoring into a
-completed corpus rather than observing real outages. (2) The $q$ grid is a
-sensitivity analysis, not a measured provider outage rate. (3) The primary
-model assumes independent, constant per-step censoring; the stress test probes
-only one departure. (4) IPCW requires a correct and estimable censoring model,
-which real harnesses would have to fit rather than know. (5) Positivity and
-variance degrade for long horizons and high $q$. (6) Results come from one
-public software-engineering corpus with one scaffold family and three models;
-the ranking analysis has only three eligible models and is a weak test. (7) The
-real provider case demonstrates existence, not prevalence, and yields no
-reliability estimate. (8) Replication on other agent domains, scaffolds, and
-genuinely observed infrastructure failures remains future work.
+(1) The censoring study is \textbf{semi-synthetic}: we inject censoring rather
+than observe outages. (2) The $q$ grid is a sensitivity analysis, not a measured
+rate. (3) The model assumes independent constant per-step censoring with
+$C\perp Y\mid H$; the stress test probes only one departure, and genuinely
+outcome-dependent (MNAR) censoring is out of scope. (4) IPCW needs a correct,
+estimable mechanism, which real harnesses must fit rather than know.
+(5) Positivity and variance degrade for long horizons and high $q$. (6) Both
+corpora contain repeated tasks and unequal model coverage, so results are
+finite-corpus statements, not population inference; one $\tau$-bench identifier
+covers 330 rows because two files share a \texttt{model\_path}. (7) The SWE
+ranking analysis has only 3 eligible models and is a weak test. (8) The real
+provider case shows existence, not prevalence. (9) Replication on other domains,
+scaffolds, and genuinely observed infrastructure failures remains future work.
 
 \section{Conclusion}
 
-An invalid execution is not a failed one. We showed that treating it as either a
-failure or a missing row biases reported agent reliability in opposite
-directions, that the bias arises from horizon compounding even when
-infrastructure failures are outcome-independent, and that on 80{,}035 real
-agent trajectories the reporting policy alone can move reported reliability by
-several points. Censoring-aware estimation recovers the intended estimand when
-the mechanism is known and degrades predictably when it is not. The practical
-implication is modest and concrete: agent evaluations should record validity per
-run, report the censoring mechanism, and say which policy produced the number.
+An invalid execution is not a failed one. Scoring it as failure and deleting it
+are both biased, in opposite directions, and the bias survives even when
+infrastructure failures are independent of the agent, because horizon compounds
+exposure. Two corpora behave exactly as the identity predicts: where successes
+are much shorter, deletion inflates reliability; where horizons are nearly
+outcome-independent, deletion is nearly safe while scoring-as-failure is
+worst. The practical implication is modest and concrete: record validity per
+run, report the censoring mechanism, and when it is unknown, report bounds
+instead of a number.
 
 \bibliographystyle{aaai26}
 \bibliography{references}
+
+\appendix
+\section{Appendix}
+
+\paragraph{A.1 Full hazard grid (SWE-agent).} Induced estimands (\%), true
+$p=16.73$: at $q=0.10/0.25/0.50/1.00/2.00\%$, $p_{\mathrm{cc}}=
+16.91/17.17/17.57/18.27/19.42$ and $\mathbb{E}[\hat p_{\mathrm{fail}}]=
+16.48/16.11/15.53/14.46/12.61$, with expected retained fractions
+$0.974/0.938/0.884/0.791/0.649$.
+
+\paragraph{A.2 Full hazard grid ($\tau$-bench).} True $p=55.03$;
+$p_{\mathrm{cc}}=55.06/55.09/55.15/55.26/55.43$ and
+$\mathbb{E}[\hat p_{\mathrm{fail}}]=54.31/53.26/51.54/48.28/42.39$; retained
+$0.986/0.967/0.934/0.874/0.765$.
+
+\paragraph{A.3 Monte Carlo.} 200 replicates per hazard, $C_i\sim\mathrm{Bern}
+(\pi_i)$ with $\pi_i=s^{H_i}$; terminal Bernoulli survival has the same
+distribution as step-by-step censoring, so the latter is unnecessary. Realised
+complete-case means agree with the induced estimand to within $0.01$ points at
+every hazard on both corpora, so the ratio-versus-limit distinction is
+numerically immaterial here even though it matters logically.
+
+\paragraph{A.4 Task-balanced results.} Weighting each task equally: SWE-agent
+$p=9.80\%$ with $q{=}1\%$ biases $+1.14/-1.30$ and $q{=}2\%$ biases
+$+2.04/-2.36$; $\tau$-bench $p=56.93\%$ with $+0.22/-7.29$ and $+0.37/-13.61$.
+
+\paragraph{A.5 Reproduction.} \texttt{uv run python
+scripts/censoring/reproduce\_all.py} regenerates every number and the figure;
+no paid API is required. Derived summaries, audits, and provenance (dataset
+revisions, retrieval dates, licenses) are written to \texttt{results/censoring/}.
+$\tau$-bench declares no license, so raw trajectories are cached outside the
+artifact and only derived statistics are stored.
+
+\paragraph{A.6 Prior controlled measurement cases.} The artifact also contains
+controlled demonstrations of four non-censoring invalidity sources: omitting the
+official evaluator test patch (pytest exits 4, ``no tests ran''), pipeline
+exit-code masking without \texttt{pipefail}, container-wide rather than
+repository-scoped change attribution ($0\!\to\!32$ files from environment churn
+alone), and future/oracle leakage (20 adversarial future steps alter 0 of 24
+prefix features).
 
 \end{document}

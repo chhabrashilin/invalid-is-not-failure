@@ -28,10 +28,17 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 SUMMARY = REPO_ROOT / "results" / "censoring" / "trajectory_summary.parquet"
 
 STAGES = [
+    # primary corpus (SWE-agent)
     ("build_summary", "build_summary.py", True),
     ("audit_step_counts", "audit_step_counts.py", True),
     ("audit_exit_status", "audit_exit_status.py", False),
     ("analyze", "analyze.py", False),
+    # secondary corpus (tau-bench)
+    ("build_tau", "build_tau_summary.py", True),
+    ("audit_tau_step_counts", "audit_tau_step_counts.py", False),
+    ("analyze_tau", "analyze_tau.py", False),
+    # cross-domain figure
+    ("make_figures", "make_figures.py", False),
 ]
 
 

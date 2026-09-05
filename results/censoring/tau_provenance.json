@@ -1,0 +1,34 @@
+{
+  "kind": "tau_bench_summary_provenance",
+  "dataset": "AgentSuite/tau-bench-trajectories",
+  "revision": "382e57d1784b55c5155f4ef394ef48f1c747a287",
+  "retrieval_date": "2026-09-05",
+  "declared_license": null,
+  "license_note": "The dataset card declares no license. Raw trajectories are cached outside the repository and are NOT redistributed; only derived per-trajectory statistics are stored.",
+  "model_files": 30,
+  "rows": 4950,
+  "unparseable_lines": 0,
+  "roles_observed": {
+    "system": 4856,
+    "user": 44677,
+    "assistant": 67338,
+    "tool": 31103
+  },
+  "agent_role_counted": "assistant",
+  "step_count_definition": "H_tau = number of messages with role == \"assistant\" (evaluated target agent decision turns); system/user/tool excluded.",
+  "step_count_defined_before_results": true,
+  "score_values_observed": {
+    "1.0": 2724,
+    "0.0": 2226
+  },
+  "distinct_finite_scores": [
+    0.0,
+    1.0
+  ],
+  "score_is_binary": true,
+  "n_missing_score": 0,
+  "finish_reasons": {
+    "user_stop": 4950
+  },
+  "wall_time_s": 10.545729637145996
+}

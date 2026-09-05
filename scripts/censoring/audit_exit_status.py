@@ -63,20 +63,23 @@ def main() -> int:
             f"{r['mean_H']:7.1f} {str(r['mean_H_resolved']):>7} {str(r['mean_H_unresolved']):>8}"
         )
 
-    # Population summary: everything with a defined target and a parseable trajectory.
-    parseable = H > 0
+    # Primary population: every row with a defined target label. Nothing is
+    # excluded. The single H=0 row (context exhausted before the agent emitted a
+    # turn) is retained: under pi=s^H it has observation probability s^0=1 and is
+    # therefore never censored, so it is well defined in the model.
+    parseable = np.ones(len(H), dtype=bool)
     summary = {
         "kind": "censoring_base_population",
         "total_rows": int(tbl.num_rows),
-        "rows_with_zero_agent_steps": int((~parseable).sum()),
+        "rows_with_zero_agent_steps": int((H == 0).sum()),
         "primary_population_rule": (
-            "all trajectories with a defined target label and at least one parsed "
-            "agent decision step (H >= 1). No row is excluded on the basis of "
-            "exit_status, because exit_status is associated with success and "
-            "filtering on it would condition on the outcome."
+            "all trajectories with a defined target label; no exclusions. Rows are "
+            "NOT filtered on exit_status, because exit_status is associated with "
+            "success and filtering on it would condition on the outcome. The single "
+            "H=0 row is retained (pi=s^0=1, never censored)."
         ),
         "primary_population_n": int(parseable.sum()),
-        "excluded_n": int((~parseable).sum()),
+        "excluded_n": 0,
         "true_reliability_p": round(float(target[parseable].mean()), 6),
         "resolved_n": int(target[parseable].sum()),
         "unresolved_n": int((~target[parseable]).sum()),
