@@ -39,6 +39,8 @@ STAGES = [
     ("analyze_tau", "analyze_tau.py", False),
     # cross-domain figure
     ("make_figures", "make_figures.py", False),
+    # analyses added in revision; writes the camera-ready figure
+    ("revision_analysis", "revision_analysis.py", False),
 ]
 
 
