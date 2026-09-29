@@ -1,0 +1,64 @@
+TAS 2026 CAMERA-READY (paper 7658), single author
+==================================================
+
+Files
+-----
+  main.tex                        camera-ready source (authors shown, copyright slug on)
+  references.bib                  24 entries; all 11 arXiv IDs checked against arxiv.org
+  figures/fig1_censoring_bias.pdf three-panel figure (TrueType fonts)
+  aaai2026.sty, aaai2026.bst      AAAI-26 style files copied from the draft folder
+  main_preview_xetex.pdf          PREVIEW ONLY, built with Tectonic/XeTeX and TeX Gyre
+                                  (Times-metric) fonts. Do not submit it; build the
+                                  real PDF with pdfLaTeX as below.
+
+Build (Overleaf)
+----------------
+1. New blank project. Upload main.tex, references.bib, the two style files, and
+   figures/fig1_censoring_bias.pdf (keep the figures/ folder).
+2. Compiler: pdfLaTeX. Recompile twice so the bibliography resolves.
+3. Check: main text ends on page 4 (references may start on page 4); no [?]
+   citations; the copyright line appears at the bottom of page 1 column 1.
+
+AAAI-27 author kit
+------------------
+The proceedings email names the AAAI-27 kit (https://aaai.org/authorkit27/,
+which blocks scripted downloads). Download it in a browser, put its .sty and
+.bst in this folder, and change the two "aaai2026" strings in main.tex
+(\usepackage and \bibliographystyle). Recheck the page count afterwards.
+
+Before uploading to the AAAI CRC site (NOT EasyChair)
+------------------------------------------------------
+[ ] Build with the AAAI-27 kit if its rules differ from AAAI-26.
+[ ] Confirm affiliation line and email are as you want them.
+[ ] Complete the AAAI copyright form requested by the CRC site.
+[ ] Optional: add an Acknowledgments section (funding, compute) before the
+    references if applicable.
+[ ] Register for the symposium (rates rise after October 2, 2026).
+
+What changed relative to the reviewed version
+---------------------------------------------
+R1.1, R3.4  Finite-corpus estimand p = N^-1 sum Y_i; N used throughout.
+R1.2, R3.2  Mean horizon gap replaced by the survival ratio rho = pbar1/pbar0
+            (Prop. 2, Table 1); mean gap shown to be first order only; stochastic
+            dominance checked (fails in both corpora, yet rho > 1 for q <= 5%).
+R1.3, R3.1  Opposite-direction claim conditioned on rho > 1; 5 of 29 tau-bench
+            models have rho < 1, where both policies err downward.
+R1.4        Invalid-as-failure is conservative for levels, not comparisons.
+R1.5, R3.3  Definition 1 (validity rule); context exhaustion is a valid failure.
+R1.6, R1.7, R3.5  Abstract and results framed as hypothetical hazards; simulation
+            agreement described as a code check, not validation.
+R1.8        Prop. 3 (rerun until valid): removes 70-72% of SWE-agent's bias.
+R1.9        Early abort described as outcome-dependent, outside the model.
+R1.10       Appendix A.6 now holds the misspecified-hazard results, with corpus
+            (SWE-agent) and hazards (0.5%, 1%) stated.
+R4.1        Bounded non-binary scores covered after Prop. 1.
+R4.2        Prop. 4: Kaplan-Meier weighting needs only observed quantities;
+            validated under constant and step-dependent hazards; observed
+            container failures (early_exit) analysed as real censoring.
+
+Corrections to numbers in the reviewed version
+----------------------------------------------
+- SWE-agent HT standard deviation: 0.018 to 0.097 points (was 0.016 to 0.096).
+- Realised complete-case mean vs induced estimand on tau-bench: within 0.04
+  points (Monte Carlo error), not 0.01; SWE-agent is within 0.001.
+- E[p_fail] at q = 2% on SWE-agent: 12.60 (was 12.61; exact 12.6045).
