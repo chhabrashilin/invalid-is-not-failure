@@ -32,26 +32,13 @@ have a registration confirmation.
 
 ---
 
-## B. GitHub public repo (if not already pushed)
+## B. GitHub public repo
 
-If `https://github.com/chhabrashilin/invalid-is-not-failure` does not exist yet,
-in PowerShell:
+**Already done from this session.** Live at:
 
-```powershell
-cd C:\Users\chhab\Downloads\Github\chhabrashilin\research\resched
-gh repo create chhabrashilin/invalid-is-not-failure --public --source=. --remote=origin --push
-```
+https://github.com/chhabrashilin/invalid-is-not-failure
 
-If `origin` already exists pointing elsewhere:
-
-```powershell
-gh repo create chhabrashilin/invalid-is-not-failure --public
-git remote add public https://github.com/chhabrashilin/invalid-is-not-failure.git
-git push -u public tas-censoring-final:main
-```
-
-**Done when:** the GitHub page shows the README titled "Invalid Is Not Failure"
-and the latest commits.
+Local branch `tas-censoring-final` tracks `origin/main`. Only create the repo again if that URL 404s.
 
 ---
 
