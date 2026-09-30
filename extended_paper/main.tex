@@ -46,32 +46,31 @@ University of Wisconsin--Madison\\
 \maketitle
 
 \begin{abstract}
-Long-running agents often stop without a valid task outcome because a provider,
-runtime, or evaluation harness failed rather than the agent. Benchmarks then
-either score such runs as failures or drop them. We treat this as an
-identification problem and make four contributions. First, we give a rule that
-separates censoring from failure and show that, when infrastructure failures
-are independent of the agent, both common policies are closed-form functions of
-three numbers: the success rate and the mean survival probabilities of
-successful and failed runs. Scoring invalid runs as failures multiplies the
-success probability by the survival of successes; dropping them multiplies the
-success odds by the survival ratio; rerunning removes only the between-task part
-of that distortion. Second, we show that weighting requires only observed
-quantities, give a doubly robust estimator that also uses the partial
-trajectory of each invalid run, and give a sensitivity analysis for
-outcome-dependent failure. Third, we measure the problem on public data: a
-census of 243 SWE-bench leaderboard submissions and 19{,}500 frontier-model runs
-on the bash-only leaderboard. Invalid or unattributable runs appear in 70\% of
-SWE-bench Verified submissions, and under a broad reading the data identify only
-43 of 105 adjacent leaderboard orderings. One frontier submission lost 56\% of
-its runs to provider errors, all but one scored as failures; another moves from 12th to
-9th of 39 once 11 provider failures are treated as censored, and stays in 9th or
-10th unless failed runs are assumed four times less likely to succeed than
-comparable completed runs. Fourth, under declared hazards, rankings of 39
-frontier models are far more fragile than older corpora: a per-step hazard of
-0.1\%, which invalidates about 4\% of runs, already reverses 24 of 741 model
-pairs under the standard policy. We release the census, code, and a minimum
-validity record for benchmark reports.
+Long-running agents often stop without a valid outcome because a provider,
+runtime, or evaluation harness failed rather than the agent. Leaderboards score
+such runs as failures; papers sometimes drop them. We treat this as an
+identification problem. \emph{Theory:} when failures are independent of the
+agent, both policies are closed-form functions of three numbers, the success
+rate and the mean survival of successful and failed runs; rerunning removes only
+the between-task part of the distortion; and two agents swap places at a
+critical per-step hazard $q^*\approx\ln(p_A/p_B)/(\bar H_{1,A}-\bar H_{1,B})$,
+where $\bar H_1$ is the mean length of successful runs. This one-line law
+predicts the exact reversal hazard of 424 of the 429 reversing pairs in three
+corpora, with rank correlation 0.98 to 0.99. \emph{Estimation:} weighting
+needs only observed quantities, a doubly robust estimator also uses each invalid
+run's logged prefix, and a parameter $\gamma$ bounds outcome-dependent failure.
+\emph{Measurement:} across 542 public submissions to 11 SWE-bench and
+Multi-SWE-bench leaderboards, 89\% contain invalid or unattributable runs, and
+on SWE-bench Verified 58 orderings pass a paired significance test yet are not
+identified by the published evidence. At the leaderboard-wide provider-failure
+rate and the container-crash rate observed in public logs, scoring invalid runs
+as failures would reverse 11 and 39 of 741 pairs among 39 frontier models. Treating Gemini 3 Pro's 11 provider failures as
+censored raises its estimate by 0.7 to 2.6 points (95\% interval) and improves
+its rank in 92\% of task resamples. \emph{Validation:} repeated runs and
+cross-model task difficulty imply $\gamma$ between 0.46 and 0.82 in all four
+real cases we can test, and a replicate-based estimate that does not assume
+independence agrees with weighting to within 0.06 points. We release the census,
+code, and a minimum validity record for benchmark reports.
 \end{abstract}
 
 \section{Introduction}
@@ -105,25 +104,31 @@ frontier, where models differ several-fold in how many steps they take.
 \item \textbf{Identification} (Section~\ref{sec:ident}). A validity rule
 separating outcomes from censoring; assumption-free bounds; a three-number
 characterisation of the two standard policies; a decomposition of rerunning;
-and the observation that weighting needs no counterfactual horizon, with its
-limit under hard caps.
+weighting without counterfactual horizons and its limit under hard caps; a
+critical-hazard law for pairwise reversals; and sharp rank intervals for
+leaderboard entries.
 \item \textbf{Estimation} (Section~\ref{sec:est}). A doubly robust estimator
 that exploits the partial trajectory of every invalid run, and a sensitivity
 analysis for outcome-dependent failure.
 \item \textbf{Measurement} (Sections~\ref{sec:data}--\ref{sec:real}). A census of
-243 public SWE-bench submissions and 19{,}500 frontier runs with harness exit
-statuses, showing real invalidity, non-identified leaderboard orderings, and
-real rank changes; plus declared-hazard sensitivity on three corpora
-($\approx$104k trajectories).
+542 public submissions to 11 leaderboards and 23{,}661 frontier runs on two
+SWE-bench splits, showing real invalidity, orderings that are significant but
+not identified, and real rank changes with sampling uncertainty; plus hazards
+calibrated to failure processes observed in public logs.
+\item \textbf{Validation} (Section~\ref{sec:tests}). Tests of the
+independent-failure assumption on real data, using repeated runs of the same
+task and cross-model task difficulty.
 \item \textbf{Practice} (Section~\ref{sec:practice}). A minimum validity record
-that makes every estimator in this paper computable from logs.
+that makes every estimator in this paper computable from logs (the doubly robust
+one also needs the logged trajectory).
 \end{itemize}
 
 This paper extends a four-page symposium version\footnote{Presented at the AAAI
 2026 Fall Symposium on Trustworthy Agentic Systems (TAS 2026). New here: the
-estimation theory of Section~\ref{sec:est}, the leaderboard census and frontier
-corpus, all real-censoring analyses, and the fragility results on the
-frontier.} whose formal core is Section~\ref{sec:ident}.
+critical-hazard law and rank intervals, the estimation theory of
+Section~\ref{sec:est}, the leaderboard census and frontier corpora, all
+real-censoring analyses and assumption tests, and the fragility results.} whose
+formal core is Section~\ref{sec:ident}.
 
 \section{Setup}
 \label{sec:setup}
@@ -230,8 +235,41 @@ collapse to the complete case and only Proposition~\ref{prop:bounds} remains
 valid.
 \end{proposition}
 
-Proofs of Propositions~\ref{prop:rerun} and \ref{prop:km} are in
-Appendix~\ref{app:proofs}.
+\paragraph{When do rankings break?} Comparisons, not levels, are what
+leaderboards report. Let agents $A$ and $B$ have $p_A>p_B$, and let $\mu_{y}$ and
+$\sigma^2_{y}$ be the mean and variance of the horizon of runs with outcome $y$.
+
+\begin{proposition}[Critical hazard]\label{prop:critical}
+Under a constant per-step hazard $q$, invalid-as-failure ranks $B$ above $A$ iff
+$\ln(p_A/p_B)<\ln\pb_{1,B}(q)-\ln\pb_{1,A}(q)$. Since
+$\ln\E[s^H]=-q\mu+\tfrac{q^2}{2}(\sigma^2-\mu)+O(q^3)$, the reversal hazard is,
+to first order,
+\[
+q^*_{\rm fail}\approx\frac{\ln(p_A/p_B)}{\mu_{1,A}-\mu_{1,B}}
+\quad\text{if }\mu_{1,A}>\mu_{1,B},
+\]
+and no reversal occurs to first order otherwise. For the complete case the
+odds and the survival ratio take the same roles:
+$q^*_{\rm cc}\approx\ln(\mathrm{odds}_A/\mathrm{odds}_B)/
+[(\mu_{1,A}-\mu_{0,A})-(\mu_{1,B}-\mu_{0,B})]$.
+\end{proposition}
+
+A relative gap of $x\%$ is erased by a hazard of about $x\%$ divided by the
+difference in mean successful horizon. Agents that are close in score but far
+apart in horizon, which describes the current frontier, are therefore fragile
+at hazards far below any that practitioners would notice.
+
+\begin{proposition}[Sharp rank intervals]\label{prop:rank}
+Let each leaderboard entry $j$ have identified interval $[\ell_j,u_j]$ from
+Proposition~\ref{prop:bounds}. The set of ranks entry $j$ can take, over all
+values of the missing outcomes, is exactly
+$\{1+\#\{k:\ell_k>u_j\},\dots,1+\#\{k\neq j:u_k>\ell_j\}\}$ up to ties, and $A$
+is identified to rank above $B$ iff $\ell_A>u_B$.
+\end{proposition}
+
+Sharpness holds because each entry's missing outcomes are separate unknowns, so
+every entry can sit at either end of its interval at the same time. Proofs of
+Propositions~\ref{prop:rerun}--\ref{prop:rank} are in Appendix~\ref{app:proofs}.
 
 \section{Estimation from Partial Trajectories}
 \label{sec:est}
@@ -260,7 +298,9 @@ The exactness claim is a telescoping identity
 (Appendix~\ref{app:proofs}); we use it as a numerical check of our
 implementation. Proposition~\ref{prop:dr} also relaxes independence: the
 failure hazard may depend on observed history such as tokens consumed or
-elapsed steps, which covers quota-driven rate limits.
+elapsed steps, which covers quota-driven rate limits. In that case $\lambda$ and
+$G$ in \eqref{eq:dr} become run-specific, $\lambda_i(t)$ and $G_i(t)$, modelled
+given the prefix; our experiments use only the marginal Kaplan--Meier version.
 
 \paragraph{Outcome-dependent failure.} No weighting method identifies $p$ if
 failure depends on the unobserved outcome. We therefore tilt the success odds of
@@ -286,14 +326,16 @@ SWE-agent \citep{nebius2024trajectories} & SWE-agent & 80{,}036 & 3 & 16.73 &
 exit status (Table~\ref{tab:exit}) \\
 $\tau$-bench \citep{agentsuite2026taubench} & native & 4{,}950 & 29 & 55.03 & none
 (all \texttt{user\_stop}) \\
-Frontier (bash-only) & mini-SWE-agent & 19{,}500 & 39 & 61.36 & exit status
+Frontier, Verified (bash-only) & mini-SWE-agent & 19{,}500 & 39 & 61.36 & exit status
 (Table~\ref{tab:exit}) \\
-Leaderboard census & various & 243 subm. & 243 & -- & evaluation outcome lists \\
+Frontier, Multilingual & mini-SWE-agent & 4{,}161 & 14 & 66.26 & none published \\
+Leaderboard census & various & 542 subm. & 542 & -- & evaluation outcome lists \\
 \bottomrule
 \end{tabular}
-\caption{Corpora. $p$ for the frontier corpus is over runs with a valid
-outcome. The census covers every SWE-bench Verified (135), Lite (84), and Test
-(24) submission with a results file at the pinned commit.}
+\caption{Corpora. $p$ for the Verified frontier corpus is over runs with a valid
+outcome. The census covers every submission with a results file at pinned
+commits: SWE-bench Verified (135), Lite (84), and Test (24), and the verified
+splits of Multi-SWE-bench in eight languages (299).}
 \label{tab:data}
 \end{table}
 
@@ -307,23 +349,35 @@ models evaluated on the same 500 tasks with the same scaffold
 \citep{minisweagent2025}. For every run we take the horizon (API calls), cost,
 and resolution from the submission's per-instance file and read the harness
 exit status from the public trajectory, fetching only the bytes that contain it
-(315\,MB rather than about 30\,GB). Two submissions had per-instance labels that
+(315\,MB in total, instead of full trajectories of a megabyte or more each). Two submissions had per-instance labels that
 contradict their own metadata; we rebuilt one from the evaluation reports
 (353/500 resolved against a reported 69.6\%) and excluded the other, whose
-public artifact holds only 98 of 500 reports. The \emph{leaderboard census}
-reads every submission's evaluation outcome lists at a pinned commit of the
-SWE-bench experiments repository \citep{swebench2026experiments}.
+public artifact holds only 98 of 500 reports. The \emph{Multilingual frontier
+corpus} has the same structure for 14 models on 300 tasks, but its trajectories
+are not public, so it records horizons and outcomes without exit statuses; we use
+it only for declared-hazard analyses. The \emph{leaderboard census} reads every
+submission's evaluation outcome lists at pinned commits of the SWE-bench and
+Multi-SWE-bench experiment repositories
+\citep{swebench2026experiments,multiswebench2025experiments}. We exclude SWE-bench
+Multimodal because its published files imply two different task counts (517 and
+510), so its scores are not comparable across submissions.
 
 \paragraph{Horizon.} $H$ counts agent decision steps: AI turns in the SWE-agent
 corpus (verified exactly on 20 re-fetched trajectories), assistant turns in
 $\tau$-bench, and API calls in the frontier corpus.
 
 \paragraph{Classifying invalidity.} Table~\ref{tab:exit} applies
-Definition~\ref{def:validity} to every recorded status. In the census, we treat
-\texttt{no\_logs}, \texttt{install\_fail}, and \texttt{reset\_failed} as
-evaluation censoring (no verdict was produced) and \texttt{no\_generation} and
-\texttt{test\_timeout} as unattributable; a \emph{strict} reading treats only the
-former as missing, a \emph{broad} reading both.
+Definition~\ref{def:validity} to every recorded status. In the census, runs with
+no evaluation verdict are \emph{evaluation censoring} (SWE-bench:
+\texttt{no\_logs}, \texttt{install\_fail}, \texttt{reset\_failed};
+Multi-SWE-bench: incomplete or errored evaluation), and runs whose cause cannot
+be read from the published files are \emph{unattributable} (SWE-bench:
+\texttt{no\_generation}, \texttt{test\_timeout}; Multi-SWE-bench: empty or error
+patches and instances missing from every outcome list). A \emph{strict} reading
+treats only evaluation censoring as missing; a \emph{broad} reading treats both
+classes as missing. An empty patch may well be the agent's own failure, so the
+broad reading is an upper envelope that shows what the published evidence cannot
+rule out.
 
 \begin{table}[t]
 \centering
@@ -400,15 +454,14 @@ Table~\ref{tab:three}). On $\tau$-bench $\rho\approx1$, so dropping is nearly
 safe while scoring-as-failure costs 12.6 points at $q=2\%$. On the frontier,
 horizons are long (successes average 38 steps, failures 51), so a 1\% hazard
 invalidates 12--57\% of a model's runs and scoring-as-failure costs up to 38.4
-points (DeepSeek-V3.2 at high reasoning effort, whose successful runs average 83
-steps).
+points (DeepSeek V3.2 (high), whose successful runs average 83 steps).
 
 \paragraph{The mean gap is not enough, and both policies can err downward.}
 The first-order approximation $\log\rho\approx q(\bar H_0-\bar H_1)$ overstates
 SWE-agent's $\log\rho$ by 26\% at $q=1\%$ and 48\% at $q=2\%$. Neither older
 corpus satisfies stochastic dominance (Figure~\ref{fig:horizons}), yet $\rho>1$
 at every $q\le5\%$. At model level, 5 of 29 $\tau$-bench models and 1 of 39
-frontier models (Devstral 2512) have $\rho<1$; for these, dropping invalid runs also
+frontier models (Devstral (2512)) have $\rho<1$; for these, dropping invalid runs also
 understates reliability.
 
 \begin{figure}[t]
@@ -425,10 +478,49 @@ whose order reverses under a declared hazard.}
 score (median gap between adjacent models 1.0 point) and far apart in horizon,
 their order is much more sensitive than that of older corpora
 (Figure~\ref{fig:fragility}b). Under invalid-as-failure, the first reversal among
-the 39 models occurs at $q=0.01\%$; at $q=0.1\%$, which invalidates 4.1\% of
+the 39 models occurs at a per-step hazard of only 0.0077\%, and two pairs reverse
+below 0.01\%; at $q=0.1\%$, which invalidates 4.1\% of
 runs on average, 24 of 741 pairs reverse; at $q=0.25\%$ (9.8\% invalid), 69; at
 $q=1\%$, 192. Dropping invalid runs is gentler but not safe: 1, 6, and 24 pairs.
 On $\tau$-bench the first reversal needs $q=0.32\%$.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_critical.pdf}
+\caption{(a) The first-order law of Proposition~\ref{prop:critical} against the
+exact reversal hazard under invalid-as-failure, for the 424 pairs in three
+corpora that reverse by $q=5\%$ and that the law predicts to reverse (it misses
+5 of 429); the dotted line is equality. (b) Share of
+adjacent leaderboard pairs reversed as the hazard grows, with the constant-hazard
+equivalents of the provider-failure rate observed across the bash-only
+leaderboard and the container-crash rate observed in the SWE-agent corpus.}
+\label{fig:critical}
+\end{figure}
+
+\paragraph{A one-line law predicts reversals.} Proposition~\ref{prop:critical}
+reduces fragility to two numbers per pair. On the Verified frontier corpus, 361
+of 739 pairs reverse by $q=5\%$. For the 356 of these that the first-order law
+predicts to reverse, it ranks the exact reversal hazards with Spearman
+correlation 0.992 and falls within a factor of two of the exact value for 98.9\%
+(median error 3.7\%); the second-order version is within a factor of two for
+every pair it predicts (median error 0.5\%). The law
+is equally accurate on the Multilingual frontier corpus (91 pairs, correlation
+0.976) and on $\tau$-bench (401 pairs, 0.990), see Figure~\ref{fig:critical}a.
+It also explains which pairs can reverse at all: invalid-as-failure can only
+demote the agent whose successful runs are longer, so 14 of the 36 adjacent
+frontier pairs are reversible, and 8 of the 36 reverse at $q\le0.1\%$.
+
+\paragraph{Calibrated to observed failure processes.} To remove the hypothetical
+hazard, we estimate step-wise hazards from the invalidations actually recorded in
+the logs and expose every model to them. At the provider-failure process pooled
+over the bash-only leaderboard (1.5\% of runs invalid on average), scoring
+invalid runs as failures would reverse 11 of 741 frontier pairs and move one
+model by 2.3 points; at the SWE-agent container-crash process (6.1\% invalid),
+39 pairs and 7.8 points; at the process one submission actually experienced on a
+bad day (Qwen2.5-Coder 32B Instruct, 36\% invalid), 241 pairs. The Multilingual
+frontier corpus behaves the same way (1 and 11 of 91 pairs), while no
+$\tau$-bench pair reverses under the two typical processes, because its
+horizons are short and nearly outcome-independent.
 
 \paragraph{Rerunning removes most, not all, of the bias.} On SWE-agent's 4{,}219
 task$\times$model cells, rerunning until valid removes 70--72\% of the
@@ -446,24 +538,41 @@ cost; reports need an explicit model.
 \begin{figure}[t]
 \centering
 \includegraphics[width=\textwidth]{figures/fig_census.pdf}
-\caption{Identified intervals for the top 40 of 135 SWE-bench Verified
-submissions. Dots are leaderboard scores (resolved over 500), which are the lower
-endpoints. Bars extend over evaluation-censored runs (strict) and additionally
-over unattributable runs (broad).}
+\caption{(a) Identified intervals for the top 40 of 135 SWE-bench Verified
+submissions. Dots are leaderboard scores (resolved over tasks), which are the
+lower endpoints; bars extend over evaluation-censored runs (strict) and
+additionally over unattributable runs (broad). (b) Share of adjacent leaderboard
+orderings the published evidence identifies, for all 11 splits.}
 \label{fig:census}
 \end{figure}
 
-\paragraph{Census.} Across 243 SWE-bench submissions, invalidity is common and
-leaderboard gaps are small (Figure~\ref{fig:census}). On Verified, 35\% of
-submissions contain evaluation-censored runs (up to 18\% of a submission) and
-70\% contain unattributable runs (median 0.4\%, up to 24.2\%); 15 submissions
-have more than 5\% of runs in one of the two classes. The median gap between
-adjacent submissions is 0.4 points, two tasks, and 61\% of adjacent gaps are at
-most that. Consequently the data identify 89 of 105 adjacent orderings under the
-strict reading and only 43 under the broad reading (Lite: 55 and 21 of 66;
-Test: 18 and 11 of 22). Over all pairs the identified share is 98.8\% and
-94.9\% on Verified: the leaderboard's coarse structure is sound, its fine
-structure is not identified by the published evidence.
+\paragraph{Census.} Across 542 submissions to 11 leaderboards, 481 (89\%)
+contain runs that are evaluation-censored or unattributable
+(Figure~\ref{fig:census}). On SWE-bench Verified, 35\% of submissions contain
+evaluation-censored runs (up to 18\% of a submission) and 70\% contain
+unattributable runs (median 0.4\%, up to 24.2\%); 15 have more than 5\% of their
+runs in the two classes combined. Leaderboard gaps are small: the median gap
+between adjacent Verified submissions is 0.4 points, two tasks. The data
+therefore identify 89 of 105 adjacent Verified orderings under the strict reading
+and 43 under the broad reading (Lite: 55 and 21 of 66; Test: 18 and 11 of 22).
+By Proposition~\ref{prop:rank}, the median Verified submission's rank interval
+spans 1 place (strict) or 5 places (broad), and the widest spans 51. On
+Multi-SWE-bench, evaluation censoring is rare, so every adjacent ordering is
+identified under the strict reading, but empty or error patches are frequent
+(up to 95\% of a submission) and the published files do not say whether the
+agent or the harness produced them; under the broad reading only 18 of 176
+adjacent orderings are identified. The evidence needed to tell these cases apart
+is simply not recorded.
+
+\paragraph{Significant but not identified.} Leaderboard comparisons are often
+backed by paired significance tests over tasks. For every pair of submissions
+with published per-task results we ran a paired $z$-test and cross-tabulated it
+with identification. On SWE-bench Verified, 8{,}001 of 9{,}008 pairs differ
+significantly at the 5\% level, yet 58 of them are not identified even under the
+strict reading, and 163 under the broad reading (Lite: 31 and 212; Test: 12 and
+29). Across all 11 splits, 101 significant orderings are not identified under the
+strict reading and 2{,}506 under the broad reading. A significance test that
+treats invalid runs as failures certifies orderings the data do not support.
 
 \begin{table}[t]
 \centering
@@ -473,30 +582,40 @@ structure is not identified by the published evidence.
  & censored & leaderboard & bounds & complete & KM & rank \\
 submission & runs & score & (strict) & case & weighted & LB $\to$ KM \\
 \midrule
-Qwen2.5-Coder-32B & 278 & 9.0 & [8.8, 64.4] & 19.8 & 10.3 & 38 $\to$ 38 \\
-Gemini 3 Pro (high) & 11 & 70.6 & [70.6, 72.8] & 72.2 & 72.2 & 12 $\to$ 9 \\
+Qwen2.5-Coder 32B Instruct & 278 & 9.0 & [8.8, 64.4] & 19.8 & 10.3 & 38 $\to$ 38 \\
+Gemini 3 Pro$^{a}$ & 11 & 70.6 & [70.6, 72.8] & 72.2 & 72.2 & 12 $\to$ 9 \\
 gpt-oss-120b & 9 & 26.0 & [26.0, 27.8] & 26.5 & 26.3 & 36 $\to$ 36 \\
 Gemini 3 Flash (high) & 3 & 75.8 & [75.8, 76.4] & 76.3 & 76.3 & 2 $\to$ 2 \\
 \bottomrule
 \end{tabular}
 \caption{Real provider failures on the frontier leaderboard (resolved \%, 500
 tasks each). Seven of 39 submissions have provider-censored runs; the four with
-the most are shown. Ranks count models strictly ahead (ties share a rank).}
+the most are shown. Ranks count models strictly ahead (ties share a rank).
+$^{a}$Labels rebuilt from the submission's evaluation reports (70.6\%); with its
+officially reported 69.6\% it ranks 14th, so the move to 9th is larger.}
 \label{tab:frontier}
 \end{table}
 
 \paragraph{Frontier provider failures.} Seven of 39 frontier submissions lost
 runs to provider errors after the harness's retries, 305 runs in all, of which
-304 are scored as unresolved (Table~\ref{tab:frontier}). Qwen2.5-Coder-32B lost 278 of
-500 runs (56\%): its leaderboard score of 9.0\% is the lower end of an interval
-that reaches 64.4\%. Complete-case reporting would give 19.8\%, but the failures
+304 are scored as unresolved (Table~\ref{tab:frontier}). Qwen2.5-Coder 32B
+Instruct lost 278 of 500 runs (56\%): its leaderboard score of 9.0\% sits at the
+bottom of an identified interval of $[8.8,64.4]\%$ (the lower endpoint is below
+the score because one provider-failed run is marked resolved). Complete-case reporting would give 19.8\%, but the failures
 struck long runs, which rarely succeed, so Kaplan--Meier weighting with the
 observed failure step gives 10.3\%, and the sensitivity analysis gives
 9.2--13.9\% for $\gamma\in[1/4,4]$. The rank is unchanged either way. Gemini 3
 Pro lost only 11 runs (2.2\%), but it sits in the densest part of the
-leaderboard: weighting moves it from 12th (tied) to 9th, and it ranks 9th or
-10th for every $\gamma\in[1/4,4]$, that is, even if its failed runs were four
-times less likely to succeed than comparable completed runs.
+leaderboard: weighting moves it from 12th (tied; 14th at its officially reported
+score) to 9th, and it ranks 9th or 10th for every $\gamma\in[1/4,4]$, that is,
+even if its failed runs were four times less likely to succeed than comparable
+completed runs. Task sampling adds its own uncertainty, which we quantify with
+a paired bootstrap that resamples the 500 tasks jointly for all 39 submissions
+(2{,}000 resamples). The correction itself is robust: the weighted estimate
+exceeds the leaderboard score by 0.7 to 2.6 points (95\% interval) and improves
+the rank in 92\% of resamples. The absolute rank is not: its 95\% interval runs
+from 7th to 16th on the leaderboard score and from 5th to 14th after weighting.
+For Qwen2.5-Coder the correction is 0.4 to 2.2 points, with no rank change.
 
 \paragraph{Container failures in the SWE-agent corpus.} The corpus's
 \texttt{early\_exit} status is set only when the container runtime raises during
@@ -505,6 +624,48 @@ The identified interval is $[16.73,20.70]\%$; complete-case gives 17.42\%;
 model-stratified Kaplan--Meier gives 17.09\%; the doubly robust estimator, which
 also uses each crashed run's logged prefix, gives 17.10\%; and $\gamma\in[1/4,4]$ gives 16.8--17.8\%. The corpus label is the lower
 endpoint.
+
+\section{Testing the Independence Assumption on Real Data}
+\label{sec:tests}
+
+Weighting assumes that an invalidated run would have succeeded as often as a
+completed run that reached the same step ($\gamma=1$). Two structures in public
+data let us test this without running any agent.
+
+\paragraph{Repeated runs of the same task.} In the SWE-agent corpus,
+task$\times$model cells hold many runs (median 13); we use the 3{,}157 crashed
+runs whose cell has at least three completed runs. Container crashes are
+\emph{not} independent of the task: they occur in 5.0\% of runs in cells that
+never succeed and in 1.6\% of runs in cells that succeed at least 60\% of the
+time. Weighting, however, conditions on the failure step, and hard tasks are
+also the long ones. The completed runs in a crashed run's own cell imply that
+crashed runs would have succeeded 7.8\% of the time; the step-based imputation
+used by weighting says 9.4\%. The implied $\gamma$ is 0.82, and the reliability
+estimate built from cell-mates, which does not assume independence, is 17.04\%,
+against 17.10\% from weighting, 17.42\% from dropping, and 16.73\% from the
+corpus label.
+
+\paragraph{Cross-model task difficulty.} On the frontier leaderboard, the other
+38 models' results measure how hard each task is. Qwen2.5-Coder's provider
+failures struck slightly harder tasks (mean cross-model success 0.59 against
+0.65). Conditioning on both the failure step and task difficulty, its failed runs
+would have succeeded 2.1\% of the time, against 2.6\% under the step-based
+imputation ($\gamma=0.78$), for an estimate of 9.9\% against 10.3\% from
+weighting. A difficulty-only imputation would claim 17.3\%, because it ignores
+that these runs were still running at step 52 on average while Qwen's successful
+runs average 16 steps; the failure step carries most of the information. For
+gpt-oss-120b the implied $\gamma$ is 0.80 (26.2\% against 26.3\%). Gemini 3 Pro's
+11 failures struck much harder tasks (0.47 against 0.61), giving $\gamma=0.46$
+and an estimate of 71.8\% against 72.2\%, still above its leaderboard score.
+
+\paragraph{What the tests show.} In all four cases the implied $\gamma$ lies
+between 0.46 and 0.82, inside the range $[1/4,4]$ we use for sensitivity
+analysis, and the resulting estimates move by at most 0.4 points. Infrastructure
+failures in these logs lean slightly towards harder tasks than their failure
+step alone suggests, so weighting estimates are, if anything, slightly
+optimistic. They are closer to the replicate- and difficulty-based estimates
+than invalid-as-failure in all four cases, and closer than dropping in three
+(for Gemini 3 Pro the two coincide).
 
 \section{Estimators in Practice}
 \label{sec:estimators}
@@ -520,45 +681,49 @@ Under a hard cap at 25 steps on SWE-agent, weighting collapses to the complete
 case (23.04\% against a true 16.73\%) and only the bounds
 $[15.05,49.73]\%$ remain valid.
 
-\paragraph{Doubly robust estimation.} We fit $\mu$ by weighted logistic
-regression on 16 prefix features and an intercept (elapsed steps; counts of edit, create, run,
-and navigation actions; failed edits; observation errors; whether a clean run
-followed the last edit; steps since the last edit; the model), with two-fold
-cross-fitting by task and weights $\hat G(t-1)/\hat G(H_i)$ on completed runs.
-The implementation satisfies the exactness identity of
-Proposition~\ref{prop:dr} to machine precision. Prefixes are informative but far
-from decisive: the in-sample AUC for eventual success (17 parameters on 2.1
-million step rows) rises from 0.53 at step~1 to 0.71 at step~40
-(Figure~\ref{fig:dr}b). Figure~\ref{fig:dr}a shows the three properties
-the theory predicts. \emph{Robustness to the censoring model:} under the
-step-dependent hazard, weighting with a constant-hazard fit is biased by $+0.68$
-points, and adding the prefix model cuts the bias to $-0.03$. \emph{Robustness to
-the outcome model:} with correct Kaplan--Meier weights, a deliberately wrong
-constant $\mu=0.5$ leaves the estimator unbiased ($+0.01$). \emph{Efficiency:} at
-$q=2\%$ the prefix model lowers the standard deviation from 0.133 to 0.084
-points relative to constant-hazard weighting, and from 0.090 to 0.085 relative to
-Kaplan--Meier weighting. On the real container failures the two agree
-(17.10\%), which is consistent with those failures being unrelated to the prefix
-features we model. The practical value of the prefix is
-therefore insurance against a wrong censoring model, with modest efficiency
-gains that should grow with better outcome models.
+\paragraph{Doubly robust estimation.} We fit $\mu$ on completed runs with
+weights $\hat G(t-1)/\hat G(H_i)$ and two-fold cross-fitting by task, using 22
+prefix features: elapsed steps; counts of edit, create, run, navigation, test,
+and reproduction actions; failed edits; observation errors and apparent test
+passes; whether a clean run or a passing observation followed the last edit;
+steps since the last edit; and the model. We compare two outcome models, a
+logistic regression and a gradient-boosted classifier. The implementation
+satisfies the exactness identity of Proposition~\ref{prop:dr} to machine
+precision. Prefixes are informative but far from decisive: the out-of-fold AUC
+for eventual success rises from 0.48 at step~1 to 0.72 (logistic) and 0.75
+(boosted) at step~40 (Figure~\ref{fig:dr}b). Figure~\ref{fig:dr}a shows the three
+properties the theory predicts (30 replicates per scenario).
+\emph{Robustness to the censoring model:} under the step-dependent hazard,
+constant-hazard weighting is biased by $+0.67$ points, and adding the prefix
+model cuts the bias to $-0.04$ (logistic) or $-0.05$ (boosted).
+\emph{Robustness to the outcome model:} with correct Kaplan--Meier weights, a
+deliberately wrong constant $\mu=0.5$ leaves the estimator unbiased ($+0.01$,
+first iteration with 50 replicates). \emph{Efficiency:} at $q=2\%$ the boosted
+prefix model lowers the standard deviation from 0.097 to 0.083 points relative to
+Kaplan--Meier weighting and from 0.186 to 0.081 relative to constant-hazard
+weighting, with bias below 0.01 points. On the real container failures the
+doubly robust and weighted estimates agree (17.10\%), which is consistent with
+those failures being unrelated to the modelled prefix features once the failure
+step is known. The prefix thus buys insurance against a wrong censoring model
+and an efficiency gain that grows with the quality of the outcome model.
 
 \begin{figure}[t]
 \centering
 \includegraphics[width=\textwidth]{figures/fig_dr.pdf}
-\caption{Estimation from partial trajectories on the SWE-agent corpus (50
-replicates per scenario). (a) Root-mean-square error of five estimators under
-constant and step-dependent declared hazards; the constant-hazard fit fails when
-the hazard changes with step, and the doubly robust estimator repairs it. (b)
-In-sample discrimination (AUC) of the prefix model by the step at which a run is
-cut.}
+\caption{Estimation from partial trajectories on the SWE-agent corpus (30
+replicates per scenario). (a) Root-mean-square error of six estimators under a
+constant and a step-dependent declared hazard; the constant-hazard fit fails when
+the hazard changes with step, and the doubly robust estimators repair it with
+either outcome model. (b) Out-of-fold discrimination (AUC) of the two prefix
+models by the step at which a run is cut; the dotted line is chance.}
 \label{fig:dr}
 \end{figure}
 
 \section{A Minimum Validity Record}
 \label{sec:practice}
 
-Every estimator in this paper is computable from five fields per run:
+Every estimator in this paper except the doubly robust one, which also needs
+the logged trajectory, is computable from five fields per run:
 (1) the task and agent; (2) the termination reason, classified by
 Definition~\ref{def:validity}; (3) the step (and, if relevant, tokens and
 wall-clock) at termination; (4) the outcome, if one was produced; and (5) the
@@ -587,34 +752,47 @@ Disclosure and validity work
 reports what happened; we study how missing outcomes change the estimand and
 what the published evidence identifies. Our estimators are classical
 \citep{horvitz1952generalization,kaplan1958nonparametric,manski1990nonparametric,robins1992recovery,robins1994estimation,bang2005doubly,scharfstein1999adjusting};
-the contribution is their mapping onto agent evaluation, the three-number and
-rerun results, the use of partial trajectories, and measurement on public
-leaderboards.
+the contribution is their mapping onto agent evaluation, the three-number,
+rerun, and critical-hazard results, sharp rank intervals for leaderboards, the
+use of partial trajectories, tests of the assumptions on real data, and
+measurement on public leaderboards.
 
 \section{Limitations}
 
-(1) The declared-hazard results are a sensitivity analysis; the real-censoring
-results rest on exit statuses whose attribution we classify by
-Definition~\ref{def:validity}, and some statuses are unattributable. (2)
-Weighting assumes failure independent of the outcome given the observed prefix;
-the $\gamma$ analysis bounds departures but does not remove them. (3) The census
-reads published outcome lists; a submission's \texttt{no\_generation} may be the
-agent's own choice, which is why we report strict and broad readings. (4) The
-frontier corpus uses one scaffold on one benchmark, and two submissions required
-label repair or exclusion. (5) Rankings use point estimates; we do not model
-sampling uncertainty over tasks. (6) A controlled fault-injection study in a
-live harness, with paired clean runs as ground truth, is the natural next test.
+(1) The declared-hazard results are a sensitivity analysis, now anchored by
+hazards estimated from real logs; the real-censoring results rest on exit
+statuses whose attribution we classify by Definition~\ref{def:validity}, and some
+statuses are unattributable. (2) Weighting assumes failure independent of the
+outcome given the failure step; the tests of Section~\ref{sec:tests} cover four
+real cases, and the $\gamma$ analysis bounds departures without removing them.
+(3) The census reads published outcome lists; an empty patch or a missing
+generation may be the agent's own failure, which is why we report strict and
+broad readings, and a few Multi-SWE-bench submissions report different task
+totals for the same language. (4) The frontier corpora use one scaffold, and two
+submissions required label repair or exclusion. (5) Sampling uncertainty over
+tasks is quantified for the real rank changes and in the significance
+cross-tabulation, but not for every declared-hazard result. (6) We did not run a
+live fault-injection study. With deterministic inference, a run invalidated at
+step $t$ is exactly its fault-free run truncated at $t$, so injecting censoring
+into completed trajectories already gives ground truth for the censoring
+mechanism; what a live study would add is realism of the failure process, which
+Section~\ref{sec:hazard} instead calibrates to failure processes observed in
+public logs.
 
 \section{Conclusion}
 
 An invalid execution is not a failed one. On public leaderboards, runs lost to
 providers, containers, and evaluation harnesses are scored as failures, which
 reports the lower end of what the data identify; dropping them tilts the odds;
-rerunning fixes only part. Because horizons differ several-fold across frontier
-models, these choices reorder models at hazards far below what practitioners
-routinely see. The remedy is cheap: record each run's termination reason and
-step, report the identified interval, and estimate with weights, and with the
-partial trajectory, when independence is defensible.
+rerunning fixes only part. A one-line law says when rankings break: when the
+relative gap between two agents falls below the hazard times the difference in
+their successful horizons. Because frontier models are close in score and far
+apart in horizon, that happens at failure rates already present in public logs,
+and significance tests that ignore invalid runs certify orderings the evidence
+does not support. The remedy is cheap: record each run's termination reason and
+step, report identified intervals and rank intervals, and estimate with weights,
+and with the partial trajectory, when independence is defensible; on the four
+real cases we could test, departures from it were small.
 
 \bibliographystyle{plainnat}
 \bibliography{references}
@@ -639,6 +817,29 @@ $H$, so $\hat G$ is consistent for $G$ wherever the risk set is non-empty
 weighted numerator and denominator are consistent for $Np$ and $N$
 \citep{satten2001kaplan}. Under a cap, every run with $H>K$ is invalidated at
 $K+1$, so $\hat G(K+1)=0$ and valid runs all have weight $\hat G(H_i)^{-1}=1$.
+
+\paragraph{Proposition~\ref{prop:critical}.} By Proposition~\ref{prop:three},
+$\E\hat p_{{\rm fail},A}<\E\hat p_{{\rm fail},B}$ iff
+$\ln p_A+\ln\pb_{1,A}(q)<\ln p_B+\ln\pb_{1,B}(q)$. With $s=1-q$,
+$\pb_1(q)=\E[e^{H\ln s}\mid Y=1]$ is the moment generating function of the
+success horizon at $\ln s=-q-q^2/2+O(q^3)$, so its logarithm, the cumulant
+generating function, is $\ln s\,\mu_1+(\ln s)^2\sigma_1^2/2+O(q^3)
+=-q\mu_1+\tfrac{q^2}{2}(\sigma_1^2-\mu_1)+O(q^3)$. Substituting and keeping the
+linear term gives the stated root; keeping the quadratic term gives the
+second-order version used in Section~\ref{sec:hazard}. The complete case follows
+in the same way from the odds identity of Proposition~\ref{prop:three}, with
+$\ln\rho=\ln\pb_1-\ln\pb_0$.
+
+\paragraph{Proposition~\ref{prop:rank}.} Entry $j$'s score can be any value in
+$[\ell_j,u_j]$ attainable by its own missing outcomes, independently of every
+other entry, because different entries' runs are different unknowns. Entry $j$
+is ranked best when it takes $u_j$ and every other entry $k$ takes $\ell_k$,
+which leaves exactly the entries with $\ell_k>u_j$ ahead of it; it is ranked
+worst when it takes $\ell_j$ and every other entry takes $u_k$, which puts every
+entry with $u_k>\ell_j$ ahead. Moving the other entries between their endpoints
+one at a time changes $j$'s rank by at most one per move, so, up to ties among
+equal scores, every intermediate rank is attained. The ordering of $A$ and $B$
+is identified iff it holds at the least favourable values, $\ell_A$ and $u_B$.
 
 \paragraph{Exactness in Proposition~\ref{prop:dr}.} Using
 $1/G(t)-1/G(t-1)=\lambda(t)/G(t)$, a run invalidated at step $t_0$ contributes
@@ -670,10 +871,19 @@ $p=55.03\%$: $p_{\rm cc}=55.06/55.09/55.15/55.26/55.43$ and
 $\E\hat p_{\rm fail}=54.31/53.26/51.54/48.28/42.39$. Horvitz--Thompson bias never
 exceeds 0.005 (SWE-agent) or 0.017 points ($\tau$-bench).
 
+\paragraph{First-iteration doubly robust results.} A first version used a
+logistic outcome model with 16 prefix features and 50 replicates in three
+scenarios (constant $q=1\%$ and $2\%$, step-dependent $q_0=1\%$). Its results
+agree with the main text: under the step-dependent hazard, constant-hazard
+weighting was biased by $+0.68$ points and the doubly robust estimator by
+$-0.03$; with correct Kaplan--Meier weights, a constant $\mu=0.5$ gave biases of
+$+0.010$, $-0.004$, and $+0.012$ points in the three scenarios.
+
 \paragraph{Label repair and exclusion.} The bash-only submission for Gemini 3 Pro
-(high) lists every run as unresolved in its per-instance file while its metadata
+(submitted 2026-02-26 at high reasoning effort) lists every run as unresolved in its per-instance file while its metadata
 reports 69.6\%; its 500 public evaluation reports give 353 resolved (70.6\%),
-which we use. The submission for Claude 3.7 Sonnet (mini-SWE-agent v0.0.0)
+which we use. The submission for Claude 3.7 Sonnet (20250219), run with
+mini-SWE-agent v0.0.0,
 reports 52.8\% in metadata and 10.2\% in its per-instance file, and only 98 of
 500 evaluation reports are public, so we exclude it.
 
@@ -681,10 +891,16 @@ reports 52.8\% in metadata and 10.2\% in its per-instance file, and only 98 of
 \texttt{scripts/censoring/reproduce\_all.py} regenerates the symposium results;
 the scripts in \texttt{scripts/extended/} then run in this order:
 \begin{itemize}
-\item \texttt{fetch\_swebench\_census.py}, \texttt{fetch\_bash\_only\_exits.py};
+\item \texttt{fetch\_swebench\_census.py}, \texttt{fetch\_multi\_swe\_bench.py};
+\item \texttt{fetch\_bash\_only\_exits.py} (with \texttt{--split verified} and
+\texttt{--split multilingual});
 \item \texttt{repair\_labels.py}, \texttt{build\_prefix\_features.py};
 \item \texttt{census\_leaderboard.py}, \texttt{frontier\_analysis.py},
-\texttt{sensitivity.py}, \texttt{dr\_estimator.py};
+\texttt{critical\_hazard.py}, \texttt{trace\_driven.py};
+\item \texttt{sensitivity.py}, \texttt{assumption\_tests.py},
+\texttt{real\_case\_uncertainty.py};
+\item \texttt{dr\_estimator.py}, \texttt{dr\_estimator\_v2.py} (needs
+scikit-learn);
 \item \texttt{make\_extended\_figures.py}.
 \end{itemize}
 
