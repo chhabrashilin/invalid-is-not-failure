@@ -1,0 +1,21 @@
+{
+ "tolerance_pp": 0.25,
+ "repaired": [
+  {
+   "submission": "20250720_mini-v0.0.0-claude-3-7-sonnet-20250219",
+   "metadata_score": 52.8,
+   "per_instance_score": 10.2,
+   "reports": 98,
+   "resolved_in_reports": 51,
+   "rebuilt_score_over_500": 10.2
+  },
+  {
+   "submission": "20260226_mini-v2.0.0_gemini-3-pro-high",
+   "metadata_score": 69.6,
+   "per_instance_score": 0.0,
+   "reports": 500,
+   "resolved_in_reports": 353,
+   "rebuilt_score_over_500": 70.6
+  }
+ ]
+}

@@ -1,0 +1,79 @@
+{
+ "swe_agent_early_exit": {
+  "n_censored": 3176,
+  "censored_with_cell_data": 3157,
+  "mean_success_completed_pct": 17.419984387197502,
+  "mean_imputed_independence_pct": 9.35857856517002,
+  "mean_imputed_cell_pct": 7.8403666726605366,
+  "implied_gamma": 0.8181528494836925,
+  "estimate_cell_imputation_pct": 17.03919511474004,
+  "early_exit_rate_by_cell_difficulty": [
+   {
+    "cell_success": "0",
+    "runs": 44972,
+    "early_exit_rate_pct": 4.960864537934715
+   },
+   {
+    "cell_success": "[0.0,0.1)",
+    "runs": 8392,
+    "early_exit_rate_pct": 5.016682554814109
+   },
+   {
+    "cell_success": "[0.1,0.3)",
+    "runs": 7880,
+    "early_exit_rate_pct": 2.4111675126903553
+   },
+   {
+    "cell_success": "[0.3,0.6)",
+    "runs": 8587,
+    "early_exit_rate_pct": 1.7934086409689065
+   },
+   {
+    "cell_success": "[0.6,1.0)",
+    "runs": 10007,
+    "early_exit_rate_pct": 1.6088737883481565
+   }
+  ]
+ },
+ "frontier_provider": {
+  "qwen2-5-coder-32b-instruct": {
+   "mean_imputed_step_and_difficulty_pct": 2.059197238181372,
+   "estimate_step_and_difficulty_pct": 9.944913664428844,
+   "implied_gamma_step_and_difficulty": 0.774720353975127,
+   "censored": 278,
+   "mean_difficulty_censored_tasks": 0.5943836680300141,
+   "mean_difficulty_completed_tasks": 0.6482673996898747,
+   "mean_imputed_difficulty_pct": 15.301275852692958,
+   "mean_imputed_independence_pct": 2.6258632816811356,
+   "implied_gamma": 7.830359873545249,
+   "estimate_difficulty_imputation_pct": 17.307509374097286,
+   "slope_logit": 0.33885698122710795
+  },
+  "gpt-oss-120b": {
+   "mean_imputed_step_and_difficulty_pct": 12.90159132622948,
+   "estimate_step_and_difficulty_pct": 26.232228643872133,
+   "implied_gamma_step_and_difficulty": 0.8028652710927922,
+   "censored": 9,
+   "mean_difficulty_censored_tasks": 0.5838470048996365,
+   "mean_difficulty_completed_tasks": 0.6230479112406436,
+   "mean_imputed_difficulty_pct": 20.87241665245164,
+   "mean_imputed_independence_pct": 15.448349573010855,
+   "implied_gamma": 1.4756157110689183,
+   "estimate_difficulty_imputation_pct": 26.37570349974413,
+   "slope_logit": 0.5031729567651764
+  },
+  "gemini-3-pro-high": {
+   "mean_imputed_step_and_difficulty_pct": 54.36074790344144,
+   "estimate_step_and_difficulty_pct": 71.79593645387571,
+   "implied_gamma_step_and_difficulty": 0.4588926558557195,
+   "censored": 11,
+   "mean_difficulty_censored_tasks": 0.4684900211216,
+   "mean_difficulty_completed_tasks": 0.61362111454136,
+   "mean_imputed_difficulty_pct": 54.36074790344144,
+   "mean_imputed_independence_pct": 72.18813905930467,
+   "implied_gamma": 0.4588926558557195,
+   "estimate_difficulty_imputation_pct": 71.79593645387571,
+   "slope_logit": 0.8568610474980681
+  }
+ }
+}

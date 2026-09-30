@@ -116,6 +116,10 @@ paper/**/*.fls
 !results/censoring/
 !results/censoring/**
 
+# Extended-paper derived tables (aggregates, estimators, run-level CSVs used in the paper).
+!results/extended/
+!results/extended/**
+
 # Local reference build of the submission PDF (Overleaf output is authoritative).
 !tas_overleaf/main_reference_build.pdf
 
@@ -124,6 +128,14 @@ paper/**/*.fls
 !tas_submission_review/**
 !tas_camera_ready_draft/
 !tas_camera_ready_draft/**
+
+# Local LaTeX / preview build products
+extended_paper/main_preview.pdf
+*.aux
+*.blg
+*.synctex.gz
+*.fdb_latexmk
+*.fls
 
 # user-created local backup, not part of the deliverable
 swe-only-backup*

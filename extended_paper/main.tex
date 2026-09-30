@@ -888,6 +888,10 @@ reports 52.8\% in metadata and 10.2\% in its per-instance file, and only 98 of
 500 evaluation reports are public, so we exclude it.
 
 \paragraph{Reproduction.} All inputs are public and no paid API is used.
+Code, derived census tables, and the interval tool are released at
+\url{https://github.com/chhabrashilin/invalid-is-not-failure}
+(Zenodo DOI and Hugging Face dataset/Space URLs: replace this sentence after
+minting; keep the GitHub URL if the repository name changes).
 \texttt{scripts/censoring/reproduce\_all.py} regenerates the symposium results;
 the scripts in \texttt{scripts/extended/} then run in this order:
 \begin{itemize}
@@ -903,5 +907,7 @@ the scripts in \texttt{scripts/extended/} then run in this order:
 scikit-learn);
 \item \texttt{make\_extended\_figures.py}.
 \end{itemize}
+The Gradio app under \texttt{spaces/identified\_intervals/} computes identified
+intervals and sharp rank intervals from pasted leaderboard counts.
 
 \end{document}

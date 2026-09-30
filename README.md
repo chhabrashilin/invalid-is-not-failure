@@ -1,59 +1,74 @@
-# ReSched — Failure-Aware Resource Scheduling for Agentic AI Workflows
+# Invalid Is Not Failure
 
-**Status: Stage 1 — research specification only. No simulator, no experiments, no
-results.** Nothing in this repository is a measured result.
+**Paper:** *Invalid Is Not Failure: Infrastructure Censoring Bias in Long-Horizon Agent Evaluation*  
+**Author:** Shilin Chhabra (University of Wisconsin--Madison)  
+**Symposium:** AAAI 2026 Fall Symposium on Trustworthy Agentic Systems (TAS 2026), paper 7658 (camera-ready)
 
-## Research question
+When provider, container, or harness failures end agent runs, leaderboards often score them as failures (the lower endpoint of the identified interval). Dropping them tilts the success odds by the survival ratio. Rerunning removes only part of the bias. Under a constant per-step hazard \(q\), two agents swap places near
 
-> Can failure-aware scheduling reduce end-to-end task completion time and wasted
-> computation in agentic AI workflows compared with resource-aware and workflow-aware
-> scheduling policies?
+\[
+q^* \approx \frac{\ln(p_A/p_B)}{\bar H_{1,A}-\bar H_{1,B}}.
+\]
 
-Agentic workflows fail and retry as a matter of course (tool timeouts, failed code
-execution, verifier rejections). Conventional DAG and cluster schedulers optimize as
-if tasks succeed. This project asks — empirically, in a discrete-event simulator —
-whether using per-task failure probability and expected downstream recomputation cost
-as a scheduling signal actually helps, and under which conditions it does not.
+This repository releases the symposium paper, an extended preprint, reproduction scripts, and **derived** census tables for 542 public SWE-bench / Multi-SWE-bench submissions plus frontier analyses.
 
-## Documents (read in this order)
+## Links (fill after you publish)
 
-| Document | Contents |
+| Artifact | URL |
 |---|---|
-| [docs/research_question.md](docs/research_question.md) | Question, motivation, scope, non-goals, **unverified** novelty claim |
-| [docs/hypotheses.md](docs/hypotheses.md) | H1–H6 with IVs, DVs, confounders, falsification criteria |
-| [docs/system_model.md](docs/system_model.md) | Entities, workflow/task model, retry semantics, scheduler interface, invariants |
-| [docs/experiment_plan.md](docs/experiment_plan.md) | Staging, metrics, experiment families, statistical + reproducibility protocol |
-| [docs/related_work.md](docs/related_work.md) | Empty by design — no citations until papers are actually read |
-| [docs/research_log.md](docs/research_log.md) | Append-only decision log |
+| GitHub | `https://github.com/chhabrashilin/invalid-is-not-failure` |
+| Zenodo DOI | _pending (create a GitHub release after enabling Zenodo)_ |
+| Hugging Face dataset | _pending_ |
+| Hugging Face Space | _pending_ |
 
-## Layout
+Update `extended_paper/main.tex` (Reproduction paragraph) once the DOI and HF URLs exist.
 
+## What is in this repo
+
+| Path | Contents |
+|---|---|
+| `tas_camera_ready/` | AAAI-27 camera-ready sources for TAS 2026 |
+| `extended_paper/` | Venue-neutral extended preprint |
+| `scripts/censoring/` | Symposium reproduction |
+| `scripts/extended/` | Census, frontier, critical hazard, DR estimators, figures |
+| `results/censoring/` | Derived symposium result files |
+| `results/extended/` | Derived census and frontier tables (no raw third-party dumps) |
+| `hf_dataset/` | Dataset card + packager for Hugging Face |
+| `spaces/identified_intervals/` | Gradio app: identified intervals and sharp rank intervals |
+
+Historical ReSched / Phase-0 measurement scaffolding remains in `docs/`, `simulator/`, `src/`, and related paths. It is **not** the claim of the TAS paper.
+
+## Quick start (reproduce derived tables)
+
+Python 3.10+, [`uv`](https://github.com/astral-sh/uv) recommended. Network is required for fetch scripts. No paid API.
+
+```powershell
+cd path\to\invalid-is-not-failure
+uv sync
+uv run python scripts/censoring/reproduce_all.py
+# then the extended pipeline in extended_paper/README.md
 ```
-docs/         research specification and log
-simulator/    discrete-event simulator            (Stage 2, empty)
-scheduler/    scheduling policies + baselines     (Stage 3-4, empty)
-experiments/  experiment drivers and configs      (Stage 5, empty)
-analysis/     aggregation, statistics, plots      (Stage 5, empty)
-tests/        unit + invariant tests              (Stage 2, empty)
-results/      raw run-level outputs (not hand-edited, gitignored)
-paper/        write-up                            (Stage 6, empty)
+
+Raw upstream caches (if you run fetches) land under `data/raw/` and are gitignored. Do not redistribute material you cannot license.
+
+## Gradio tool (local)
+
+```powershell
+pip install gradio numpy
+python spaces/identified_intervals/app.py
 ```
 
-## Ground rules
+Paste a CSV with columns `name,N,resolved,E,U` (evaluation-censored count `E`, unattributable count `U`). The app returns identified intervals and sharp rank intervals under the strict and broad readings from the paper.
 
-- Results are **simulated** unless explicitly labelled otherwise, and are labelled as
-  such in figures and text.
-- Baselines are implemented independently and given every input they could realistically
-  have. Regimes where a baseline beats ReSched are reported.
-- `Oracle-ReSched` is a diagnostic upper bound under perfect information — never
-  presented as a deployable system.
-- Every reported number traces to a raw artifact under `results/` and a command recorded
-  in the research log. Results files are never edited by hand.
-- Workload distributions, failure rates, scheduler parameters, metrics, and baselines are
-  not changed after observing results without a logged entry stating what changed and why.
+## License
 
-## Requirements
+- Code and author-written materials: MIT (`LICENSE`).
+- AAAI style files in `tas_camera_ready/` belong to AAAI; keep them only for rebuilding the symposium PDF.
+- Upstream leaderboard artifacts retain their own licenses. Verify SWE-bench / Multi-SWE-bench experiment repo terms before redistributing anything beyond the derived aggregates shipped here.
 
-Python 3.11+ (**not yet installed in the current development environment**) and the
-packages in [requirements.txt](requirements.txt). Setup and run instructions will be
-added when the simulator exists in Stage 2.
+## Honesty notes
+
+- Symposium proceedings are archival. Before submitting the extended paper elsewhere, **check** that venue's dual-submission / workshop-extension policy.
+- Disclose AI assistance if the target venue requires it.
+- Free-tier quotas (GitHub, Zenodo, Hugging Face, Colab, Kaggle) change; check current terms.
+- A DOI and a Space do not equal peer review or acceptance at a later venue.

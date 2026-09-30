@@ -1,0 +1,118 @@
+{
+ "kind": "doubly_robust_v2",
+ "seed": 20260930,
+ "n_rep": 30,
+ "simulation": [
+  {
+   "q0": 0.02,
+   "hazard": "constant",
+   "n_rep": 30,
+   "km_hajek": {
+    "bias_pp": 0.010706249396286172,
+    "sd_pp": 0.09659332076227413,
+    "rmse_pp": 0.09557135765920154
+   },
+   "param_hajek": {
+    "bias_pp": -0.023734870672034725,
+    "sd_pp": 0.18627268545616155,
+    "rmse_pp": 0.18467342433234202
+   },
+   "dr_km_logistic": {
+    "bias_pp": -0.00844297619212453,
+    "sd_pp": 0.08921053691876606,
+    "rmse_pp": 0.08811651234438087
+   },
+   "dr_km_gbm": {
+    "bias_pp": -0.007303736365810165,
+    "sd_pp": 0.08328965079987138,
+    "rmse_pp": 0.0822147896118473
+   },
+   "dr_param_logistic": {
+    "bias_pp": -0.007312116932065016,
+    "sd_pp": 0.09078815652366701,
+    "rmse_pp": 0.08956119010763053
+   },
+   "dr_param_gbm": {
+    "bias_pp": -0.006895650658039765,
+    "sd_pp": 0.08146848682276621,
+    "rmse_pp": 0.08039544264664047
+   }
+  },
+  {
+   "q0": 0.01,
+   "hazard": "step-dependent",
+   "n_rep": 30,
+   "km_hajek": {
+    "bias_pp": 0.014279161505173499,
+    "sd_pp": 0.07795810353295565,
+    "rmse_pp": 0.07796651949948824
+   },
+   "param_hajek": {
+    "bias_pp": 0.6697044480928588,
+    "sd_pp": 0.0657018117900652,
+    "rmse_pp": 0.6728126670419549
+   },
+   "dr_km_logistic": {
+    "bias_pp": -0.004041746628533072,
+    "sd_pp": 0.07191567118067752,
+    "rmse_pp": 0.07082234123823035
+   },
+   "dr_km_gbm": {
+    "bias_pp": -0.00935946804118959,
+    "sd_pp": 0.07321927151657592,
+    "rmse_pp": 0.0725944853694239
+   },
+   "dr_param_logistic": {
+    "bias_pp": -0.04188359280482834,
+    "sd_pp": 0.06668865871816802,
+    "rmse_pp": 0.07780338450959699
+   },
+   "dr_param_gbm": {
+    "bias_pp": -0.05308694992841867,
+    "sd_pp": 0.06598509642664191,
+    "rmse_pp": 0.08382793550753143
+   }
+  }
+ ],
+ "features": [
+  "const",
+  "log_steps",
+  "log_steps_sq",
+  "log_edit",
+  "log_create",
+  "log_run",
+  "log_nav",
+  "any_edit",
+  "any_edit_fail",
+  "last_obs_err",
+  "clean_run_after_edit",
+  "log_obs_errors",
+  "log_steps_since_edit",
+  "log_steps_x_any_edit",
+  "log_steps_x_clean_run",
+  "model=swe-agent-llama-70b",
+  "model=swe-agent-llama-8b",
+  "log_pass_obs",
+  "log_test_cmds",
+  "log_repro_cmds",
+  "last_obs_pass",
+  "pass_after_last_edit",
+  "pass_after_edit_x_log_steps"
+ ],
+ "auc_out_of_fold": {
+  "logistic": {
+   "1": 0.4817741987580568,
+   "5": 0.5806322055773707,
+   "10": 0.6571474038007049,
+   "20": 0.6841853693105172,
+   "40": 0.718326552370851
+  },
+  "gbm": {
+   "1": 0.4817741987580568,
+   "5": 0.6106102891935382,
+   "10": 0.6754219072713628,
+   "20": 0.700823497883025,
+   "40": 0.7447187212568673
+  }
+ }
+}
