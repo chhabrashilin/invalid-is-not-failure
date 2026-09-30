@@ -76,16 +76,28 @@ def exit_status(key: str) -> tuple[str | None, int]:
     return None, fetched
 
 
+SPLIT_CONFIG = {
+    # split: (S3 prefix, output file)
+    "verified": ("bash-only", "bash_only_runs.csv"),
+    "multilingual": ("multilingual", "multilingual_runs.csv"),
+}
+
+
 def main() -> int:
+    import argparse
     import urllib.parse  # noqa: F401  (used in list_keys)
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--split", default="verified", choices=sorted(SPLIT_CONFIG))
+    split = ap.parse_args().split
+    s3_prefix, out_name = SPLIT_CONFIG[split]
     OUT.mkdir(parents=True, exist_ok=True)
-    subs = sorted(p.name for p in (RAW / "verified").iterdir()
-                  if p.is_dir() and not (p / "results.json").exists())
+    subs = sorted(p.name for p in (RAW / split).iterdir()
+                  if p.is_dir() and (split != "verified" or not (p / "results.json").exists()))
     sha = json.loads((RAW / "manifest.json").read_text())["commit"]
     rows, total_bytes = [], 0
     for sub in subs:
-        d = RAW / "verified" / sub
-        base = f"https://raw.githubusercontent.com/swe-bench/experiments/{sha}/evaluation/verified/{sub}"
+        d = RAW / split / sub
+        base = f"https://raw.githubusercontent.com/swe-bench/experiments/{sha}/evaluation/{split}/{sub}"
         for fn in ("per_instance_details.json", "metadata.yaml"):
             if not (d / fn).exists():
                 b = get(f"{base}/{fn}")
@@ -96,7 +108,7 @@ def main() -> int:
             print(f"skip {sub}: no per_instance_details.json")
             continue
         pid = json.loads(pid_path.read_text(encoding="utf-8"))
-        keys = [k for k in list_keys(f"bash-only/{sub}/trajs/")
+        keys = [k for k in list_keys(f"{s3_prefix}/{sub}/trajs/")
                 if k.endswith(".traj.json") or k.endswith(".traj")]
         by_inst = {k.split("/")[-2]: k for k in keys}
         cache = d / "exit_status.json"
@@ -118,7 +130,7 @@ def main() -> int:
         n_missing = sum(done.get(i) is None for i in pid)
         print(f"{sub}: {len(pid)} runs, {len(keys)} trajs, exit_status missing {n_missing}",
               flush=True)
-    with open(OUT / "bash_only_runs.csv", "w", newline="", encoding="utf-8") as fh:
+    with open(OUT / out_name, "w", newline="", encoding="utf-8") as fh:
         w = csv.DictWriter(fh, fieldnames=list(rows[0]))
         w.writeheader()
         w.writerows(rows)

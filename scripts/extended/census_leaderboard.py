@@ -1,22 +1,31 @@
-"""Invalidity census of the public SWE-bench leaderboards (extended paper).
+"""Invalidity census of public agent leaderboards (extended paper).
 
-Every submission's results.json lists instance ids per evaluation outcome. The
-leaderboard score is |resolved| / N, which is the invalid-as-failure policy.
-We classify outcomes with Definition 1 of the paper:
+Sources (pinned commits):
+  SWE-bench experiments      Verified (500), Lite (300), Test (2294)
+  Multi-SWE-bench experiments  c, c++, go, java, javascript, python, rust,
+                               typescript (verified splits)
+SWE-bench Multimodal is excluded: its published files imply two different task
+counts (517 and 510), so scores are not comparable across submissions.
 
-  evaluation censoring   no_logs, install_fail, reset_failed
-                         (the evaluation harness produced no verdict)
-  unattributable         no_generation, test_timeout
-                         (no patch, or tests ran out of time: agent, provider,
-                         or harness could be responsible)
-  outcome                everything else (resolved, patch failed to apply,
-                         applied but not resolved)
+Every leaderboard score is |resolved| / N, the invalid-as-failure policy. We
+classify runs with Definition 1 of the paper:
+  evaluation censoring  SWE-bench: no_logs, install_fail, reset_failed
+                        Multi-SWE-bench: incomplete or errored evaluation
+  unattributable        SWE-bench: no_generation, test_timeout
+                        Multi-SWE-bench: empty or error patch, and instances
+                        missing from every outcome list
+  outcome               everything else
 
-For each submission we report the assumption-free identified interval under a
-strict reading (only evaluation censoring is missing) and a broad reading
-(unattributable runs are missing too), and we count leaderboard orderings the
-data do not identify: A above B is identified only if A's lower endpoint
-exceeds B's upper endpoint.
+For each split we report
+  * assumption-free intervals (strict: only evaluation censoring is missing;
+    broad: unattributable runs are missing too),
+  * orderings the data identify (A above B iff lo_A > hi_B),
+  * sharp rank intervals: best rank 1 + #{B: lo_B > hi_A}, worst rank
+    1 + #{B: hi_B > lo_A}; sharp because each submission's missing outcomes
+    are separate unknowns,
+  * paired significance: a paired z-test on per-task differences for the
+    submissions whose resolved-id lists are published, cross-tabulated with
+    identification.
 
     uv run python scripts/extended/census_leaderboard.py
 """
@@ -30,89 +39,150 @@ from pathlib import Path
 import numpy as np
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-RAW = REPO_ROOT / "data" / "raw" / "swebench_experiments"
+RAW = REPO_ROOT / "data" / "raw"
 OUT = REPO_ROOT / "results" / "extended"
-N_TASKS = {"verified": 500, "lite": 300, "test": 2294}
-EVAL_CENSOR = ("no_logs", "install_fail", "reset_failed")
-UNATTRIB = ("no_generation", "test_timeout")
+SWE_N = {"verified": 500, "lite": 300, "test": 2294}
+SWE_EVAL = ("no_logs", "install_fail", "reset_failed")
+SWE_UNATTR = ("no_generation", "test_timeout")
+MSWE_LANGS = ("c", "c++", "go", "java", "javascript", "python", "rust", "typescript")
+Z = 1.959964
 
 
-def classify(d: dict) -> dict:
-    R = set(d.get("resolved", []))
-    E = set().union(*(set(d.get(k, [])) for k in EVAL_CENSOR)) - R
-    U = set().union(*(set(d.get(k, [])) for k in UNATTRIB)) - R - E
-    return {"R": len(R), "E": len(E), "U": len(U),
-            "detailed": "install_fail" in d}
-
-
-def identified_pairs(rows, key_hi):
-    """Share of ordered pairs (by score) whose order the intervals identify."""
-    total = ident = 0
-    for a, b in combinations(sorted(rows, key=lambda r: -r["score"]), 2):
-        if a["score"] == b["score"]:
+def load_swe(split):
+    rows = []
+    N = SWE_N[split]
+    for f in sorted((RAW / "swebench_experiments" / split).glob("*/results.json")):
+        d = json.loads(f.read_text(encoding="utf-8"))
+        R = d.get("resolved", [])
+        if not isinstance(R, list):
             continue
-        total += 1
-        ident += a["lo"] > b[key_hi]
-    return total, ident
+        R = set(R)
+        E = set().union(*(set(d.get(k, [])) for k in SWE_EVAL)) - R
+        U = set().union(*(set(d.get(k, [])) for k in SWE_UNATTR)) - R - E
+        rows.append({"submission": f.parent.name, "N": N, "R": R,
+                     "E": len(E), "U": len(U)})
+    return rows
+
+
+def load_mswe(lang):
+    rows = []
+    for f in sorted((RAW / "multi_swe_bench" / lang / "verified").glob("*/results.json")):
+        d = json.loads(f.read_text(encoding="utf-8"))
+        N = int(d["total_instances"])
+        R = set(d["resolved"])
+        C = set(d.get("completed_ids", []))
+        E = (set(d.get("incomplete_ids", [])) | set(d.get("error_ids", []))) - R
+        Ul = (set(d.get("empty_error_patch_ids", [])) | set(d.get("empty_patch_ids", []))) - R - E
+        missing = max(0, N - len(C | E | Ul))
+        rows.append({"submission": f.parent.name, "N": N, "R": R,
+                     "E": len(E), "U": len(Ul) + missing})
+    return rows
+
+
+def analyse(rows, label):
+    for r in rows:
+        N = r["N"]
+        r["score"] = len(r["R"]) / N
+        r["lo"] = r["score"]
+        r["hi_strict"] = (len(r["R"]) + r["E"]) / N
+        r["hi_broad"] = (len(r["R"]) + r["E"] + r["U"]) / N
+    rows.sort(key=lambda r: -r["score"])
+    n = len(rows)
+    lo = np.array([r["lo"] for r in rows])
+    out = {"n_submissions": n,
+           "N_tasks": sorted({r["N"] for r in rows}),
+           "share_any_eval": float(np.mean([r["E"] > 0 for r in rows])),
+           "share_any_unattr": float(np.mean([r["U"] > 0 for r in rows])),
+           "share_any_invalid": float(np.mean([(r["E"] + r["U"]) > 0 for r in rows])),
+           "n_over_5pct": int(sum((r["E"] + r["U"]) / r["N"] > 0.05 for r in rows)),
+           "max_invalid_pct": float(max((r["E"] + r["U"]) / r["N"] for r in rows) * 100),
+           "median_invalid_pct": float(np.median([(r["E"] + r["U"]) / r["N"] for r in rows]) * 100)}
+    for key in ("strict", "broad"):
+        hi = np.array([r[f"hi_{key}"] for r in rows])
+        tot = ident = 0
+        for i, j in combinations(range(n), 2):
+            if lo[i] == lo[j]:
+                continue
+            tot += 1
+            ident += lo[i] > hi[j]
+        adj = [(i, i + 1) for i in range(n - 1) if lo[i] > lo[i + 1]]
+        out[f"pairs_{key}"] = [tot, ident]
+        out[f"adjacent_{key}"] = [len(adj), int(sum(lo[i] > hi[j] for i, j in adj))]
+        best = 1 + (lo[None, :] > hi[:, None]).sum(axis=1)
+        worst = 1 + ((hi[None, :] > lo[:, None]) & ~np.eye(n, dtype=bool)).sum(axis=1)
+        width = worst - best
+        out[f"rank_width_{key}"] = {"median": float(np.median(width)),
+                                    "max": int(width.max()),
+                                    "share_width_ge_3": float(np.mean(width >= 3))}
+        for r, b, w in zip(rows, best, worst):
+            r[f"rank_{key}"] = [int(b), int(w)]
+    # paired significance on per-task differences
+    N = rows[0]["N"]
+    universe = sorted(set().union(*(r["R"] for r in rows)))
+    idx = {t: k for k, t in enumerate(universe)}
+    Ymat = np.zeros((n, len(universe)), dtype=np.int8)
+    for a, r in enumerate(rows):
+        for t in r["R"]:
+            Ymat[a, idx[t]] = 1
+    sig_tab = {"sig_ident_strict": 0, "sig_notident_strict": 0,
+               "sig_ident_broad": 0, "sig_notident_broad": 0, "sig": 0, "pairs": 0}
+    hi_s = np.array([r["hi_strict"] for r in rows])
+    hi_b = np.array([r["hi_broad"] for r in rows])
+    for i, j in combinations(range(n), 2):
+        if rows[i]["N"] != rows[j]["N"] or lo[i] == lo[j]:
+            continue
+        d = Ymat[i].astype(float) - Ymat[j]
+        # tasks nobody resolved contribute d = 0 and count toward N
+        mean = d.sum() / N
+        var = (d ** 2).sum() / N - mean ** 2
+        se = np.sqrt(max(var, 0) / N)
+        sig_tab["pairs"] += 1
+        if se > 0 and abs(mean) > Z * se:
+            sig_tab["sig"] += 1
+            sig_tab["sig_ident_strict" if lo[i] > hi_s[j] else "sig_notident_strict"] += 1
+            sig_tab["sig_ident_broad" if lo[i] > hi_b[j] else "sig_notident_broad"] += 1
+    out["significance"] = sig_tab
+    out["top10"] = [{k: r[k] for k in ("submission", "score", "E", "U", "hi_strict",
+                                       "hi_broad", "rank_strict", "rank_broad")}
+                    for r in rows[:10]]
+    out["rows"] = [{k: (v if k != "R" else len(v)) for k, v in r.items()} for r in rows]
+    print(f"\n== {label}: {n} subm, N={out['N_tasks']}, any invalid {out['share_any_invalid']:.2f}, "
+          f">5% {out['n_over_5pct']}, max {out['max_invalid_pct']:.1f}%")
+    for key in ("strict", "broad"):
+        p, a, w = out[f"pairs_{key}"], out[f"adjacent_{key}"], out[f"rank_width_{key}"]
+        print(f"   {key}: pairs {p[1]}/{p[0]}  adjacent {a[1]}/{a[0]}  rank width median "
+              f"{w['median']:.0f} max {w['max']} share>=3 {w['share_width_ge_3']:.2f}")
+    s = sig_tab
+    print(f"   significant pairs {s['sig']}/{s['pairs']}; significant but not identified: "
+          f"strict {s['sig_notident_strict']}, broad {s['sig_notident_broad']}")
+    return out
 
 
 def main() -> int:
     OUT.mkdir(parents=True, exist_ok=True)
-    manifest = json.loads((RAW / "manifest.json").read_text())
-    report = {"source": manifest, "splits": {}}
-    for split, N in N_TASKS.items():
-        rows = []
-        for f in sorted((RAW / split).glob("*/results.json")):
-            c = classify(json.loads(f.read_text(encoding="utf-8")))
-            rows.append({
-                "submission": f.parent.name, "N": N, **c,
-                "score": c["R"] / N, "lo": c["R"] / N,
-                "hi_strict": (c["R"] + c["E"]) / N,
-                "hi_broad": (c["R"] + c["E"] + c["U"]) / N,
-                "cc_strict": c["R"] / (N - c["E"]) if N > c["E"] else None,
-            })
-        rows.sort(key=lambda r: -r["score"])
-        inv_e = np.array([r["E"] / N for r in rows])
-        inv_u = np.array([r["U"] / N for r in rows])
-        tot, id_s = identified_pairs(rows, "hi_strict")
-        _, id_b = identified_pairs(rows, "hi_broad")
-        adj = [(a, b) for a, b in zip(rows, rows[1:]) if a["score"] > b["score"]]
-        adj_s = sum(a["lo"] > b["hi_strict"] for a, b in adj)
-        adj_b = sum(a["lo"] > b["hi_broad"] for a, b in adj)
-        top = rows[:10]
-        ttot, tid_s = identified_pairs(top, "hi_strict")
-        _, tid_b = identified_pairs(top, "hi_broad")
-        s = {
-            "n_submissions": len(rows),
-            "n_detailed": int(sum(r["detailed"] for r in rows)),
-            "share_with_any_eval_censoring": float((inv_e > 0).mean()),
-            "share_with_any_unattributable": float((inv_u > 0).mean()),
-            "median_eval_censored_pct": float(np.median(inv_e) * 100),
-            "max_eval_censored_pct": float(inv_e.max() * 100),
-            "median_unattrib_pct": float(np.median(inv_u) * 100),
-            "max_unattrib_pct": float(inv_u.max() * 100),
-            "pairs": tot, "pairs_identified_strict": id_s, "pairs_identified_broad": id_b,
-            "adjacent_pairs": len(adj), "adjacent_identified_strict": adj_s,
-            "adjacent_identified_broad": adj_b,
-            "top10_pairs": ttot, "top10_identified_strict": tid_s,
-            "top10_identified_broad": tid_b,
-            "top10": [{k: r[k] for k in ("submission", "score", "E", "U", "hi_strict",
-                                         "hi_broad")} for r in top],
-        }
-        report["splits"][split] = {"summary": s, "rows": rows}
-        print(f"\n== {split}: {len(rows)} submissions ({s['n_detailed']} with detailed "
-              f"harness categories)")
-        print(f"   any eval censoring: {s['share_with_any_eval_censoring']:.2f}  "
-              f"median {s['median_eval_censored_pct']:.2f}%  max {s['max_eval_censored_pct']:.2f}%")
-        print(f"   any unattributable: {s['share_with_any_unattributable']:.2f}  "
-              f"median {s['median_unattrib_pct']:.2f}%  max {s['max_unattrib_pct']:.2f}%")
-        print(f"   pairs identified strict {id_s}/{tot} ({id_s / tot:.3f}), "
-              f"broad {id_b}/{tot} ({id_b / tot:.3f})")
-        print(f"   adjacent identified strict {adj_s}/{len(adj)}, broad {adj_b}/{len(adj)}")
-        print(f"   top-10 pairs identified strict {tid_s}/{ttot}, broad {tid_b}/{ttot}")
-    (OUT / "census_leaderboard.json").write_text(json.dumps(report, indent=1),
-                                                 encoding="utf-8")
-    print(f"\nwrote {OUT / 'census_leaderboard.json'}")
+    report = {"sources": {
+        "swebench": json.loads((RAW / "swebench_experiments" / "manifest.json").read_text()),
+        "multi_swe_bench": json.loads((RAW / "multi_swe_bench" / "manifest.json").read_text())},
+        "splits": {}}
+    for split in SWE_N:
+        report["splits"][f"swebench/{split}"] = analyse(load_swe(split), f"SWE-bench {split}")
+    for lang in MSWE_LANGS:
+        report["splits"][f"multi-swe-bench/{lang}"] = analyse(load_mswe(lang),
+                                                              f"Multi-SWE-bench {lang}")
+    agg = {"submissions": 0, "adj_strict": [0, 0], "adj_broad": [0, 0],
+           "sig": 0, "sig_notident_strict": 0, "sig_notident_broad": 0, "any_invalid": 0}
+    for s in report["splits"].values():
+        agg["submissions"] += s["n_submissions"]
+        agg["any_invalid"] += round(s["share_any_invalid"] * s["n_submissions"])
+        for k in ("strict", "broad"):
+            agg[f"adj_{k}"][0] += s[f"adjacent_{k}"][0]
+            agg[f"adj_{k}"][1] += s[f"adjacent_{k}"][1]
+        agg["sig"] += s["significance"]["sig"]
+        agg["sig_notident_strict"] += s["significance"]["sig_notident_strict"]
+        agg["sig_notident_broad"] += s["significance"]["sig_notident_broad"]
+    report["aggregate"] = agg
+    print("\nAGGREGATE", agg)
+    (OUT / "census_leaderboard.json").write_text(json.dumps(report, indent=1, default=lambda o: o.item() if hasattr(o, "item") else str(o)), encoding="utf-8")
     return 0
 
 

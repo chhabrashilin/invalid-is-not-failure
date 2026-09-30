@@ -38,6 +38,11 @@ RUN_CMDS = {"python", "python3", "pytest", "bash", "sh", "make", "tox"}
 BLOCK = re.compile(r"```[a-zA-Z]*\n(.*?)```", re.S)
 ERR = re.compile(r"Traceback \(most recent call last\)|\bError\b|\bFAILED\b")
 EDIT_FAIL = "Your proposed edit has introduced new syntax error"
+# observation looks like passing tests / a successful script run
+PASS = re.compile(r"\b\d+ passed\b|\bOK\b|\bpassed\b|[Ss]uccess(fully)?\b|All tests")
+# action runs tests, or runs / creates a reproduction script
+TEST_CMD = re.compile(r"pytest|unittest|tox\b|runtests|manage\.py test|\btest_\w*\.py")
+REPRO_CMD = re.compile(r"reproduce|repro\b|reproduction")
 
 
 def command_code(text: str) -> int:
@@ -66,10 +71,12 @@ def main() -> int:
     urls = json.load(urllib.request.urlopen(PARQUET_API))
     fs = fsspec.filesystem("http")
     codes, obs_err, edit_fail, lengths = [], [], [], []
+    obs_pass, cmd_test, cmd_repro = [], [], []
     t0 = time.time()
     for si, url in enumerate(urls):
         for attempt in range(5):
             s_codes, s_err, s_fail, s_len = [], [], [], []
+            s_pass, s_test, s_repro = [], [], []
             try:
                 pf = pq.ParquetFile(fs.open(url))
                 rg0 = pf.metadata.row_group(0)
@@ -87,11 +94,17 @@ def main() -> int:
                                 s_codes.append(command_code(text))
                                 s_err.append(0)
                                 s_fail.append(0)
+                                s_pass.append(0)
+                                blocks = BLOCK.findall(text)
+                                cmd = blocks[-1] if blocks else ""
+                                s_test.append(int(bool(TEST_CMD.search(cmd))))
+                                s_repro.append(int(bool(REPRO_CMD.search(cmd))))
                                 n += 1
                                 prev_ai = True
                             elif role == "user" and prev_ai:
                                 s_err[-1] = int(bool(ERR.search(text)))
                                 s_fail[-1] = int(EDIT_FAIL in text)
+                                s_pass[-1] = int(bool(PASS.search(text)))
                                 prev_ai = False
                         s_len.append(n)
                 break
@@ -104,6 +117,9 @@ def main() -> int:
         codes += s_codes
         obs_err += s_err
         edit_fail += s_fail
+        obs_pass += s_pass
+        cmd_test += s_test
+        cmd_repro += s_repro
         lengths += s_len
         print(f"shard {si + 1}/{len(urls)} rows={len(lengths)} "
               f"steps={len(codes)} {time.time() - t0:.0f}s", flush=True)
@@ -118,6 +134,9 @@ def main() -> int:
                         codes=np.asarray(codes, dtype=np.uint8),
                         obs_err=np.asarray(obs_err, dtype=np.uint8),
                         edit_fail=np.asarray(edit_fail, dtype=np.uint8),
+                        obs_pass=np.asarray(obs_pass, dtype=np.uint8),
+                        cmd_test=np.asarray(cmd_test, dtype=np.uint8),
+                        cmd_repro=np.asarray(cmd_repro, dtype=np.uint8),
                         lengths=lengths)
     print(f"wrote {OUT / 'swe_prefix_records.npz'}")
     return 0

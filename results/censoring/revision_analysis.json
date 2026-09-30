@@ -1,9 +1,35 @@
 {
   "kind": "censoring_revision_analysis",
-  "generated_at": "2026-09-29T07:47:14.602028+00:00",
+  "generated_at": "2026-09-29T23:46:15.871254+00:00",
   "note": "added in revision after review; predeclared analyses unchanged",
   "revision_seed": 20270905,
   "SWE-agent": {
+    "hard_cap": [
+      {
+        "K": 25,
+        "p_pct": 16.728722075066223,
+        "invalid_frac": 0.3467814483482433,
+        "drop_pct": 23.037049788642143,
+        "fail_pct": 15.048228297266231,
+        "km_pct": 23.037049788642143,
+        "bounds_pct": [
+          15.048228297266231,
+          49.72637313209056
+        ]
+      },
+      {
+        "K": 50,
+        "p_pct": 16.728722075066223,
+        "invalid_frac": 0.09946773951721725,
+        "drop_pct": 18.169961845300033,
+        "fail_pct": 16.362636813433955,
+        "km_pct": 18.169961845300033,
+        "bounds_pct": [
+          16.362636813433955,
+          26.30941076515568
+        ]
+      }
+    ],
     "survival": [
       {
         "q": 0.0,
@@ -618,9 +644,91 @@
           "bias_fail_pp": -4.294591217296212
         }
       }
-    }
+    },
+    "exit_classification": [
+      {
+        "exit_status": "submitted",
+        "n": 51087,
+        "resolve_rate": 0.24804744847025662,
+        "class": "outcome (agent submitted)"
+      },
+      {
+        "exit_status": "submitted (exit_context)",
+        "n": 21026,
+        "resolve_rate": 0.03386283648815752,
+        "class": "outcome (context exhausted, auto-submitted)"
+      },
+      {
+        "exit_status": "exit_context",
+        "n": 3568,
+        "resolve_rate": 0.0,
+        "class": "outcome (context exhausted)"
+      },
+      {
+        "exit_status": "early_exit",
+        "n": 3176,
+        "resolve_rate": 0.0,
+        "class": "unattributable (container runtime error)"
+      },
+      {
+        "exit_status": "submitted_no_patch",
+        "n": 1066,
+        "resolve_rate": 0.0,
+        "class": "outcome (agent submitted, empty patch)"
+      },
+      {
+        "exit_status": "submitted (exit_format)",
+        "n": 80,
+        "resolve_rate": 0.0625,
+        "class": "outcome (malformed output, auto-submitted)"
+      },
+      {
+        "exit_status": "exit_format",
+        "n": 20,
+        "resolve_rate": 0.0,
+        "class": "outcome (malformed output)"
+      },
+      {
+        "exit_status": "submitted (exit_cost)",
+        "n": 10,
+        "resolve_rate": 0.0,
+        "class": "outcome (cost budget, auto-submitted)"
+      },
+      {
+        "exit_status": "exit_cost",
+        "n": 3,
+        "resolve_rate": 0.0,
+        "class": "outcome (cost budget)"
+      }
+    ]
   },
   "tau-bench": {
+    "hard_cap": [
+      {
+        "K": 25,
+        "p_pct": 55.03030303030303,
+        "invalid_frac": 0.04141414141414142,
+        "drop_pct": 56.71232876712329,
+        "fail_pct": 54.36363636363636,
+        "km_pct": 56.71232876712329,
+        "bounds_pct": [
+          54.36363636363636,
+          58.505050505050505
+        ]
+      },
+      {
+        "K": 50,
+        "p_pct": 55.03030303030303,
+        "invalid_frac": 0.0,
+        "drop_pct": 55.03030303030303,
+        "fail_pct": 55.03030303030303,
+        "km_pct": 55.03030303030303,
+        "bounds_pct": [
+          55.03030303030303,
+          55.03030303030303
+        ]
+      }
+    ],
     "survival": [
       {
         "q": 0.0,

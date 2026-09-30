@@ -19,7 +19,8 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 OUT = REPO_ROOT / "data" / "raw" / "swebench_experiments"
-SPLITS = ["verified", "lite", "test"]
+SPLITS = ["verified", "lite", "test", "multilingual", "multimodal"]
+PINNED_SHA = "40f164d5b8f1d249bf95a6df8b74b577fd8e519d"  # commit used in the paper
 
 
 def gh(path: str):
@@ -41,7 +42,7 @@ def fetch(url: str) -> bytes | None:
 
 
 def main() -> int:
-    sha = gh("repos/swe-bench/experiments/commits/main")["sha"]
+    sha = PINNED_SHA
     print("pinned commit", sha)
     OUT.mkdir(parents=True, exist_ok=True)
     manifest = {"repo": "swe-bench/experiments", "commit": sha,
@@ -59,10 +60,11 @@ def main() -> int:
                 res = fetch(f"{base}/results/results.json")
                 if res is not None:
                     (d / "results.json").write_bytes(res)
-            if not (d / "metadata.yml").exists():
-                meta = fetch(f"{base}/metadata.yml")
-                if meta is not None:
-                    (d / "metadata.yml").write_bytes(meta)
+            for fn in ("metadata.yml", "metadata.yaml", "per_instance_details.json"):
+                if not (d / fn).exists():
+                    b = fetch(f"{base}/{fn}")
+                    if b is not None:
+                        (d / fn).write_bytes(b)
             got += (d / "results.json").exists()
         manifest["splits"][split] = {"submissions": len(names), "with_results": got}
         print(f"{split}: {got}/{len(names)} submissions with results.json")

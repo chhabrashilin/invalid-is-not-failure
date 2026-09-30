@@ -54,16 +54,36 @@ def corpora():
 
 def fig_census():
     rep = json.loads((RES / "extended" / "census_leaderboard.json").read_text())
-    rows = rep["splits"]["verified"]["rows"][:40]
+    rows = rep["splits"]["swebench/verified"]["rows"][:40]
     x = np.arange(1, len(rows) + 1)
     lo = np.array([r["lo"] for r in rows]) * 100
     hs = np.array([r["hi_strict"] for r in rows]) * 100
     hb = np.array([r["hi_broad"] for r in rows]) * 100
-    fig, ax = plt.subplots(figsize=(6.8, 2.3))
-    ax.vlines(x, lo, hb, color="#aab7b8", lw=2.2, label="broad interval (unattributable missing)")
-    ax.vlines(x, lo, hs, color=C_FAIL, lw=2.2, label="strict interval (evaluation censoring missing)")
-    ax.plot(x, lo, "o", color="black", ms=2.6, label="leaderboard score (invalid as failure)")
-    ax.set_xlabel("leaderboard rank (SWE-bench Verified, top 40 of 135 submissions)")
+    fig, (ax, ax2) = plt.subplots(1, 2, figsize=(6.8, 2.4),
+                                  gridspec_kw={"width_ratios": [1.9, 1]})
+    # (b) adjacent orderings identified, per split
+    labels, s_share, b_share = [], [], []
+    for key, s in rep["splits"].items():
+        fam, split = key.split("/")
+        labels.append(("SWE-bench " if fam == "swebench" else "M-SWE ") + split)
+        s_share.append(s["adjacent_strict"][1] / max(s["adjacent_strict"][0], 1) * 100)
+        b_share.append(s["adjacent_broad"][1] / max(s["adjacent_broad"][0], 1) * 100)
+    yy = np.arange(len(labels))
+    ax2.barh(yy + 0.2, s_share, 0.4, color=C_FAIL, label="strict")
+    ax2.barh(yy - 0.2, b_share, 0.4, color="#aab7b8", label="broad")
+    ax2.set_yticks(yy)
+    ax2.set_yticklabels(labels, fontsize=6)
+    ax2.invert_yaxis()
+    ax2.set_xlim(0, 100)
+    ax2.set_xlabel("adjacent orderings identified (%)")
+    ax2.set_title("(b) all splits", fontsize=8, loc="left")
+    ax2.legend(frameon=False, fontsize=6, loc="upper center", bbox_to_anchor=(0.5, -0.22), ncol=2)
+    ax2.grid(alpha=0.25, lw=0.4, axis="x")
+    ax.set_title("(a) SWE-bench Verified, top 40 of 135", fontsize=8)
+    ax.vlines(x, lo, hb, color="#aab7b8", lw=2.0, label="broad interval")
+    ax.vlines(x, lo, hs, color=C_FAIL, lw=2.0, label="strict interval")
+    ax.plot(x, lo, "o", color="black", ms=2.4, label="leaderboard score")
+    ax.set_xlabel("leaderboard rank")
     ax.set_ylabel("resolved (%)")
     ax.set_xlim(0, len(rows) + 1)
     top = lo.max() + 4
@@ -74,7 +94,61 @@ def fig_census():
                         fontsize=6, color="0.35")
     ax.grid(alpha=0.25, lw=0.4)
     ax.legend(frameon=False, fontsize=6.5, loc="lower left")
+    fig.tight_layout(w_pad=0.8)
     save(fig, "fig_census")
+
+
+def fig_critical():
+    d = json.loads((RES / "extended" / "critical_hazard.json").read_text())
+    rep, sc = d["report"]["corpora"], d["scatter"]
+    cols = {"frontier (SWE-bench Verified, bash-only)": (C_FR, "frontier, Verified"),
+            "frontier (SWE-bench Multilingual)": ("#16a085", "frontier, Multilingual"),
+            "tau-bench": (C_TAU, r"$\tau$-bench")}
+    fig, (ax, ax2) = plt.subplots(1, 2, figsize=(6.8, 2.6))
+    for key, (col, lab) in cols.items():
+        pts = np.array(sc.get(key, []), dtype=float)
+        if len(pts):
+            ax.scatter(pts[:, 0] * 100, pts[:, 1] * 100, s=6, color=col, alpha=0.6, lw=0,
+                       label=lab)
+    lim = (1e-3, 5)
+    ax.plot(lim, lim, ":", color="0.4", lw=0.8)
+    ax.set_xscale("log")
+    ax.set_yscale("log")
+    ax.set_xlim(*lim)
+    ax.set_ylim(*lim)
+    ax.set_xlabel("exact reversal hazard $q^*$ (%)")
+    ax.set_ylabel(r"$\ln(p_A/p_B)/(\bar H_{1A}-\bar H_{1B})$ (%)")
+    ax.set_title("(a) one-line law vs exact, every pair", fontsize=8)
+    ax.legend(frameon=False, fontsize=6, loc="upper left", markerscale=2)
+    ax.grid(alpha=0.25, lw=0.4)
+    # (b) adjacent pairs: distribution of exact reversal hazards
+    tr = json.loads((RES / "extended" / "trace_driven.json").read_text())
+    for key, (col, lab) in cols.items():
+        adj = rep[key]["adjacent_exact_fail"]
+        vals = np.sort([a * 100 for a in adj if a is not None])
+        n = len(adj)
+        if len(vals):
+            ys = np.arange(1, len(vals) + 1) / n * 100
+            ax2.step(np.concatenate([[1e-3], vals]), np.concatenate([[0], ys]), where="post",
+                     color=col, lw=1.3, label=lab)
+    sub, H, Y, cost, st, cls = load_frontier()
+    q_provider = (cls == "censored").sum() / H.sum() * 100
+    rv = json.loads((RES / "censoring" / "revision_analysis.json").read_text())
+    q_container = rv["SWE-agent"]["observed_early_exit"]["qhat_constant"] * 100
+    for q_, lab in ((q_provider, "observed provider rate"), (q_container, "observed container rate")):
+        ax2.axvline(q_, color="0.3", ls="--", lw=0.8)
+        ax2.text(q_ * 1.08, 45 if "provider" in lab else 25, lab, rotation=90, fontsize=5.8,
+                 color="0.3")
+    ax2.set_xscale("log")
+    ax2.set_xlim(1e-3, 5)
+    ax2.set_ylim(0, 100)
+    ax2.set_xlabel("per-step hazard $q$ (%)")
+    ax2.set_ylabel("adjacent pairs reversed (%)")
+    ax2.set_title("(b) adjacent leaderboard pairs", fontsize=8)
+    ax2.legend(frameon=False, fontsize=6, loc="upper left")
+    ax2.grid(alpha=0.25, lw=0.4)
+    fig.tight_layout(w_pad=1.0)
+    save(fig, "fig_critical")
 
 
 def reversals(Hs, Ys, q, pol):
@@ -151,36 +225,42 @@ def fig_horizons(swe, tau, fr):
 
 
 def fig_dr():
-    path = RES / "extended" / "dr_estimator.json"
+    path = RES / "extended" / "dr_estimator_v2.json"
     if not path.exists():
-        print("skip fig_dr (no dr_estimator.json)")
+        print("skip fig_dr (no dr_estimator_v2.json)")
         return
     d = json.loads(path.read_text())
     sims = d["simulation"]
     keys = [("km_hajek", "KM weighting"), ("param_hajek", "constant-hazard weighting"),
-            ("dr_km", "DR, KM + prefix model"), ("dr_param", "DR, constant hazard + prefix"),
-            ("dr_km_null", "DR, KM + null model")]
-    fig, axes = plt.subplots(1, 2, figsize=(6.8, 2.2), gridspec_kw={"width_ratios": [1.7, 1]})
+            ("dr_km_logistic", "DR: KM + logistic prefix"),
+            ("dr_km_gbm", "DR: KM + boosted prefix"),
+            ("dr_param_logistic", "DR: const. hazard + logistic"),
+            ("dr_param_gbm", "DR: const. hazard + boosted")]
+    fig, axes = plt.subplots(1, 2, figsize=(6.8, 2.3), gridspec_kw={"width_ratios": [1.7, 1]})
     ax = axes[0]
-    width = 0.16
+    width = 0.13
     xs = np.arange(len(sims))
-    cols = ["#5d6d7e", "#aab7b8", "#1e8449", "#82e0aa", "#f5b041"]
+    cols = ["#5d6d7e", "#aab7b8", "#1e8449", "#145a32", "#82e0aa", "#48c9b0"]
     for j, ((k, lab), c) in enumerate(zip(keys, cols)):
         rmse = [s[k]["rmse_pp"] for s in sims]
-        ax.bar(xs + (j - 2) * width, rmse, width, color=c, label=lab)
+        ax.bar(xs + (j - 2.5) * width, rmse, width, color=c, label=lab)
     ax.set_xticks(xs)
-    ax.set_xticklabels([f"{s['hazard']}\n$q_0$={s['q0']*100:.0f}%" for s in sims], fontsize=6.5)
+    ax.set_xticklabels([f"{s['hazard']} hazard, $q_0$={s['q0']*100:.0f}%" for s in sims],
+                       fontsize=6.5)
     ax.set_ylabel("RMSE (points)")
     ax.set_title(f"(a) estimation error, {d['n_rep']} replicates", fontsize=8)
-    ax.legend(frameon=False, fontsize=5.8, loc="upper left")
+    ax.legend(frameon=False, fontsize=5.6, loc="upper left")
     ax.grid(alpha=0.25, lw=0.4, axis="y")
     ax = axes[1]
-    a = {int(k): v for k, v in d["auc_by_step"].items()}
-    ax.plot(list(a), list(a.values()), "o-", color="#1e8449", lw=1.2, ms=3)
+    for kind, col, lab in (("logistic", "#1e8449", "logistic"), ("gbm", "#145a32", "boosted")):
+        a = {int(k): v for k, v in d["auc_out_of_fold"][kind].items()}
+        ax.plot(list(a), list(a.values()), "o-", color=col, lw=1.2, ms=3, label=lab)
+    ax.axhline(0.5, color="0.6", lw=0.7, ls=":")
     ax.set_xscale("log")
     ax.set_xlabel("step $t$ at which the run is cut")
-    ax.set_ylabel("AUC of prefix model")
+    ax.set_ylabel("out-of-fold AUC")
     ax.set_title("(b) how informative prefixes are", fontsize=8)
+    ax.legend(frameon=False, fontsize=6, loc="upper left")
     ax.grid(alpha=0.25, lw=0.4)
     fig.tight_layout(w_pad=1.0)
     save(fig, "fig_dr")
@@ -220,6 +300,7 @@ def main() -> int:
     swe, tau, fr = corpora()
     fig_hazard(swe, tau, fr)
     fig_census()
+    fig_critical()
     fig_plane_and_fragility(swe, tau, fr)
     fig_horizons(swe, tau, fr)
     fig_dr()

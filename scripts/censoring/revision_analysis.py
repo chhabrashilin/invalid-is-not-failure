@@ -220,6 +220,25 @@ def deployable_mc(H, Y, q0, stepdep, n_rep, seed):
     return out
 
 
+def hard_cap(H, Y, K):
+    """A structurally different mechanism: every run longer than K steps is
+    invalidated (a per-run quota or a fixed harness kill). T = K+1 for all runs,
+    so T is independent of (Y, H), but G(h) = 0 for h > K and positivity fails.
+    Kaplan-Meier weights are then 1 for every valid run, so the weighted
+    estimate collapses to the complete-case rate."""
+    C = H <= K
+    V = np.where(C, H, K + 1)
+    G = km_censoring_survival(V, ~C, int(max(H.max(), K + 1)))
+    with np.errstate(divide="ignore"):
+        w = np.where(C, 1.0 / G[H], 0.0)
+    p = Y.mean()
+    S, M, N = (Y * C).sum(), (~C).sum(), len(Y)
+    return {"K": int(K), "p_pct": float(p * 100), "invalid_frac": float(M / N),
+            "drop_pct": float(Y[C].mean() * 100), "fail_pct": float(S / N * 100),
+            "km_pct": float((w * Y).sum() / w.sum() * 100),
+            "bounds_pct": [float(S / N * 100), float((S + M) / N * 100)]}
+
+
 # --------------------------------------------------------------------------
 # 5. critical hazards
 # --------------------------------------------------------------------------
@@ -343,6 +362,62 @@ def observed_censoring(d):
                      for k in ("p", "bias_cc_pp", "bias_fail_pp")}
         for q in (0.01, 0.02)}
     return res
+
+
+# Definition 1 applied to SWE-agent's exit statuses (semantics from the
+# SWE-agent v0.6.1/v0.7.0 source: exit_context and exit_cost are budget
+# exhaustion, exit_format is repeated malformed agent output, early_exit is a
+# container runtime error).
+EXIT_CLASS = {
+    "submitted": "outcome (agent submitted)",
+    "submitted_no_patch": "outcome (agent submitted, empty patch)",
+    "submitted (exit_context)": "outcome (context exhausted, auto-submitted)",
+    "exit_context": "outcome (context exhausted)",
+    "submitted (exit_cost)": "outcome (cost budget, auto-submitted)",
+    "exit_cost": "outcome (cost budget)",
+    "submitted (exit_format)": "outcome (malformed output, auto-submitted)",
+    "exit_format": "outcome (malformed output)",
+    "early_exit": "unattributable (container runtime error)",
+}
+
+
+def exit_classification(d):
+    rows = []
+    for st in sorted(set(d["exit"].tolist()), key=lambda s: -(d["exit"] == s).sum()):
+        sel = d["exit"] == st
+        rows.append({"exit_status": st, "n": int(sel.sum()),
+                     "resolve_rate": float(d["Y"][sel].mean()),
+                     "class": EXIT_CLASS.get(st, "UNCLASSIFIED")})
+    assert all(r["class"] != "UNCLASSIFIED" for r in rows)
+    return rows
+
+
+def make_horizon_figure(corpora):
+    import matplotlib
+    matplotlib.use("Agg")
+    matplotlib.rcParams["pdf.fonttype"] = 42
+    matplotlib.rcParams["ps.fonttype"] = 42
+    import matplotlib.pyplot as plt
+
+    fig, axes = plt.subplots(1, 2, figsize=(3.4, 1.55), sharey=True)
+    for ax, d, title in zip(axes, corpora, ("SWE-agent", "$\\tau$-bench")):
+        for y, col, lab in ((1, "#1e8449", "success"), (0, "#c0392b", "failure")):
+            h = np.sort(d["H"][d["Y"] == y])
+            xs = np.arange(1, h.max() + 1)
+            ax.step(xs, 1 - np.searchsorted(h, xs, side="right") / len(h), where="post",
+                    color=col, lw=1.0, label=lab)
+        ax.set_xscale("log")
+        ax.set_title(title, fontsize=7, pad=2)
+        ax.set_xlabel("horizon $h$ (agent steps)", fontsize=6.5)
+        ax.tick_params(labelsize=6)
+        ax.grid(alpha=0.25, lw=0.4)
+    axes[0].set_ylabel("$\\Pr(H>h\\mid Y)$", fontsize=6.5)
+    axes[0].legend(fontsize=5.8, frameon=False, loc="lower left")
+    fig.tight_layout(pad=0.25, w_pad=0.6)
+    out = FIG_DIR / "fig2_horizon_survival.pdf"
+    fig.savefig(out, bbox_inches="tight")
+    fig.savefig(out.with_suffix(".png"), dpi=200, bbox_inches="tight")
+    print(f"wrote {out}")
 
 
 # --------------------------------------------------------------------------
@@ -472,13 +547,22 @@ def main() -> int:
             print(f"deployable q0={q0} {r['hazard'][:8]}: " + " ".join(
                 f"{k}={r[k]['bias_pp']:+.3f}({r[k]['sd_pp']:.3f})"
                 for k in ("ht_known", "hajek_km", "ht_km", "hajek_param")))
-        payload[name] = {"survival": surv[name], "dominance": dom, "rerun": rr,
+        caps = [hard_cap(H, Y, K) for K in (25, 50)]
+        for c in caps:
+            print(f"hard cap K={c['K']}: invalid={c['invalid_frac']:.3f} drop={c['drop_pct']:.2f} "
+                  f"km={c['km_pct']:.2f} fail={c['fail_pct']:.2f} bounds={c['bounds_pct']}")
+        payload[name] = {"hard_cap": caps,
+                         "survival": surv[name], "dominance": dom, "rerun": rr,
                          "critical": crit, "models": models[name],
                          "first_reversal": rev, "deployable_ipcw": dep,
                          "models_rho_below_1_at_q1pct": below}
         if name == "SWE-agent":
             obs = observed_censoring(d)
             payload[name]["observed_early_exit"] = obs
+            payload[name]["exit_classification"] = exit_classification(d)
+            for r in payload[name]["exit_classification"]:
+                print(f"  exit {r['exit_status']:26} n={r['n']:6d} "
+                      f"resolve={r['resolve_rate']:.3f} {r['class']}")
             print("observed early_exit:", json.dumps(obs, indent=1))
         else:
             payload[name]["finish_reasons"] = {k: int(v) for k, v in
@@ -491,6 +575,7 @@ def main() -> int:
     swe_an = json.loads((OUT_DIR / "analysis.json").read_text(encoding="utf-8"))
     tau_an = json.loads((OUT_DIR / "tau_analysis.json").read_text(encoding="utf-8"))
     make_figure(swe_an, tau_an, surv, models)
+    make_horizon_figure(corpora)
     return 0
 
 
