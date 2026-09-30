@@ -1,0 +1,65 @@
+{
+ "qwen2-5-coder-32b-instruct": {
+  "censored": 278,
+  "km_point_pct": 10.259962784614714,
+  "km_ci95_pct": [
+   7.337294459738472,
+   13.300350968698893
+  ],
+  "km_minus_lb_ci95_pp": [
+   0.3891468957228062,
+   2.2009867895594106
+  ],
+  "rank_lb_ci95": [
+   39,
+   39
+  ],
+  "rank_km_ci95": [
+   39,
+   39
+  ],
+  "prob_km_rank_better_than_lb_rank": 0.0
+ },
+ "gpt-oss-120b": {
+  "censored": 9,
+  "km_point_pct": 26.333755731835623,
+  "km_ci95_pct": [
+   22.622617838999616,
+   30.312363158839368
+  ],
+  "km_minus_lb_ci95_pp": [
+   0.11902556949488856,
+   0.6121588647203698
+  ],
+  "rank_lb_ci95": [
+   37,
+   37
+  ],
+  "rank_km_ci95": [
+   37,
+   37
+  ],
+  "prob_km_rank_better_than_lb_rank": 0.0015
+ },
+ "gemini-3-pro-high": {
+  "censored": 11,
+  "km_point_pct": 72.1881390593047,
+  "km_ci95_pct": [
+   68.0244399185336,
+   76.26800773196945
+  ],
+  "km_minus_lb_ci95_pp": [
+   0.729292929292924,
+   2.5842323651452337
+  ],
+  "rank_lb_ci95": [
+   7,
+   16
+  ],
+  "rank_km_ci95": [
+   5,
+   14
+  ],
+  "prob_km_rank_better_than_lb_rank": 0.9185
+ }
+}

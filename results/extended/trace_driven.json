@@ -1,0 +1,172 @@
+{
+ "bands": [
+  [
+   1,
+   10
+  ],
+  [
+   11,
+   25
+  ],
+  [
+   26,
+   50
+  ],
+  [
+   51,
+   100
+  ],
+  [
+   101,
+   1000000
+  ]
+ ],
+ "hazards_pct": {
+  "container (SWE-agent early_exit)": [
+   0.12683510368435952,
+   0.17737200573172848,
+   0.14827041837209637,
+   0.11334613633213883,
+   0.21739460922178813
+  ],
+  "provider (frontier, pooled)": [
+   0.015207051877022143,
+   0.03187462646922107,
+   0.048912496914398564,
+   0.041440150589292984,
+   0.06363240563984059
+  ],
+  "provider (gemini-3-pro-high as observed)": [
+   0.22430668841761825,
+   0.0,
+   0.0,
+   0.0,
+   0.0
+  ],
+  "provider (qwen2-5-coder-32b-instruct as observed)": [
+   0.2922145689835108,
+   1.317829457364341,
+   2.247191011235955,
+   1.2519918051445482,
+   0.7211069966868057
+  ]
+ },
+ "results": {
+  "container (SWE-agent early_exit)": {
+   "frontier (Verified)": {
+    "n_models": 39,
+    "pairs": 741,
+    "mean_invalid_pct": 6.080651460084628,
+    "reversals_fail": 39,
+    "reversals_cc": 2,
+    "max_abs_bias_fail_pp": 7.773625277205387,
+    "max_abs_bias_cc_pp": 2.0876229555764403
+   },
+   "frontier (Multilingual)": {
+    "n_models": 14,
+    "pairs": 91,
+    "mean_invalid_pct": 7.160416767178947,
+    "reversals_fail": 11,
+    "reversals_cc": 1,
+    "max_abs_bias_fail_pp": 6.159371005821479,
+    "max_abs_bias_cc_pp": 1.3085036893939583
+   },
+   "tau-bench": {
+    "n_models": 29,
+    "pairs": 406,
+    "mean_invalid_pct": 1.9257299269450738,
+    "reversals_fail": 0,
+    "reversals_cc": 0,
+    "max_abs_bias_fail_pp": 1.5158139975849916,
+    "max_abs_bias_cc_pp": 0.23890499289337952
+   }
+  },
+  "provider (frontier, pooled)": {
+   "frontier (Verified)": {
+    "n_models": 39,
+    "pairs": 741,
+    "mean_invalid_pct": 1.534207670712146,
+    "reversals_fail": 11,
+    "reversals_cc": 1,
+    "max_abs_bias_fail_pp": 2.279783161795279,
+    "max_abs_bias_cc_pp": 0.6924232465321256
+   },
+   "frontier (Multilingual)": {
+    "n_models": 14,
+    "pairs": 91,
+    "mean_invalid_pct": 1.843987556497698,
+    "reversals_fail": 1,
+    "reversals_cc": 1,
+    "max_abs_bias_fail_pp": 1.7784752996459097,
+    "max_abs_bias_cc_pp": 0.4341095970248121
+   },
+   "tau-bench": {
+    "n_models": 29,
+    "pairs": 406,
+    "mean_invalid_pct": 0.28298061512461536,
+    "reversals_fail": 0,
+    "reversals_cc": 0,
+    "max_abs_bias_fail_pp": 0.22354153143481215,
+    "max_abs_bias_cc_pp": 0.03530169160478325
+   }
+  },
+  "provider (gemini-3-pro-high as observed)": {
+   "frontier (Verified)": {
+    "n_models": 39,
+    "pairs": 741,
+    "mean_invalid_pct": 2.171448010854067,
+    "reversals_fail": 0,
+    "reversals_cc": 0,
+    "max_abs_bias_fail_pp": 1.7036261359974936,
+    "max_abs_bias_cc_pp": 0.11967040628723113
+   },
+   "frontier (Multilingual)": {
+    "n_models": 14,
+    "pairs": 91,
+    "mean_invalid_pct": 2.2174662971248007,
+    "reversals_fail": 0,
+    "reversals_cc": 0,
+    "max_abs_bias_fail_pp": 1.6906541777835127,
+    "max_abs_bias_cc_pp": 0.004732262353623895
+   },
+   "tau-bench": {
+    "n_models": 29,
+    "pairs": 406,
+    "mean_invalid_pct": 2.049693276279358,
+    "reversals_fail": 0,
+    "reversals_cc": 0,
+    "max_abs_bias_fail_pp": 1.546711420423852,
+    "max_abs_bias_cc_pp": 0.3141792966014356
+   }
+  },
+  "provider (qwen2-5-coder-32b-instruct as observed)": {
+   "frontier (Verified)": {
+    "n_models": 39,
+    "pairs": 741,
+    "mean_invalid_pct": 35.97229900204974,
+    "reversals_fail": 241,
+    "reversals_cc": 33,
+    "max_abs_bias_fail_pp": 47.39732325291325,
+    "max_abs_bias_cc_pp": 8.434625555321384
+   },
+   "frontier (Multilingual)": {
+    "n_models": 14,
+    "pairs": 91,
+    "mean_invalid_pct": 45.007717792208716,
+    "reversals_fail": 34,
+    "reversals_cc": 11,
+    "max_abs_bias_fail_pp": 38.90630253318186,
+    "max_abs_bias_cc_pp": 5.684067999221232
+   },
+   "tau-bench": {
+    "n_models": 29,
+    "pairs": 406,
+    "mean_invalid_pct": 8.108743500345545,
+    "reversals_fail": 5,
+    "reversals_cc": 1,
+    "max_abs_bias_fail_pp": 6.5637486339970135,
+    "max_abs_bias_cc_pp": 1.4118024894081316
+   }
+  }
+ }
+}
