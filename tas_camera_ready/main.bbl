@@ -1,0 +1,157 @@
+\begin{thebibliography}{24}
+\providecommand{\natexlab}[1]{#1}
+
+\bibitem[{{AgentSuite}(2026)}]{agentsuite2026taubench}
+{AgentSuite}. 2026.
+\newblock tau-bench-trajectories.
+\newblock Hugging Face dataset, revision
+  382e57d1784b55c5155f4ef394ef48f1c747a287.
+\newblock 4{,}950 trajectories in 30 per-model files, 165 tasks per file.
+
+\bibitem[{Chen et~al.(2026)Chen, Chen, Lin, and Vong}]{chen2026judge}
+Chen, J.; Chen, W.; Lin, Z.; and Vong, C.~M. 2026.
+\newblock A Judge Should Know What Changed: Construct Validity for
+  {LLM}-as-a-Judge Evaluation.
+\newblock \emph{arXiv preprint arXiv:2608.24419}.
+
+\bibitem[{Gonuguntla(2026)}]{gonuguntla2026replay}
+Gonuguntla, A. 2026.
+\newblock The Replay Gap: Static Evaluation of Model Switching in {LLM} Agents
+  Scores the Wrong World.
+\newblock \emph{arXiv preprint arXiv:2608.08239}.
+
+\bibitem[{Horvitz and Thompson(1952)}]{horvitz1952generalization}
+Horvitz, D.~G.; and Thompson, D.~J. 1952.
+\newblock A Generalization of Sampling Without Replacement from a Finite
+  Universe.
+\newblock \emph{Journal of the American Statistical Association}, 47(260):
+  663--685.
+
+\bibitem[{Jimenez et~al.(2024)Jimenez, Yang, Wettig, Yao, Pei, Press, and
+  Narasimhan}]{jimenez2024swebench}
+Jimenez, C.~E.; Yang, J.; Wettig, A.; Yao, S.; Pei, K.; Press, O.; and
+  Narasimhan, K. 2024.
+\newblock {SWE}-bench: Can Language Models Resolve Real-World {GitHub} Issues?
+\newblock In \emph{International Conference on Learning Representations
+  (ICLR)}.
+
+\bibitem[{Kaplan and Meier(1958)}]{kaplan1958nonparametric}
+Kaplan, E.~L.; and Meier, P. 1958.
+\newblock Nonparametric Estimation from Incomplete Observations.
+\newblock \emph{Journal of the American Statistical Association}, 53(282):
+  457--481.
+
+\bibitem[{Kapoor et~al.(2024)Kapoor, Stroebl, Siegel, Nadgir, and
+  Narayanan}]{kapoor2024agentsthatmatter}
+Kapoor, S.; Stroebl, B.; Siegel, Z.~S.; Nadgir, N.; and Narayanan, A. 2024.
+\newblock {AI} Agents That Matter.
+\newblock \emph{arXiv preprint arXiv:2407.01502}.
+
+\bibitem[{Li et~al.(2026)Li, Yan, Wu, Liang, Yuan, Liu, and Yang}]{li2026early}
+Li, X.; Yan, W.; Wu, Y.; Liang, P.; Yuan, M.; Liu, J.; and Yang, J. 2026.
+\newblock Early Diagnosis of Wasted Computation in Multi-Agent {LLM} Systems
+  via Failure-Aware Observability.
+\newblock \emph{arXiv preprint arXiv:2606.01365}.
+
+\bibitem[{Manski(1990)}]{manski1990nonparametric}
+Manski, C.~F. 1990.
+\newblock Nonparametric Bounds on Treatment Effects.
+\newblock \emph{American Economic Review}, 80(2): 319--323.
+
+\bibitem[{{Naser Moghadasi} and Ghaderi(2026)}]{moghadasi2026disclose}
+{Naser Moghadasi}, M.; and Ghaderi, F. 2026.
+\newblock What Twelve {LLM} Agent Benchmark Papers Disclose About Themselves: A
+  Pilot Audit and an Open Scoring Schema.
+\newblock \emph{arXiv preprint arXiv:2605.21404}.
+
+\bibitem[{{Nebius}(2024)}]{nebius2024trajectories}
+{Nebius}. 2024.
+\newblock {SWE}-agent-trajectories.
+\newblock Hugging Face dataset, revision
+  68195a1450865274106246d0d0296a1d6807b88e, CC-BY-4.0.
+\newblock 80{,}036 software-engineering agent trajectories.
+
+\bibitem[{{OpenAI}(2024)}]{openai2024swebenchverified}
+{OpenAI}. 2024.
+\newblock Introducing {SWE}-bench Verified.
+\newblock \url{https://openai.com/index/introducing-swe-bench-verified/}.
+
+\bibitem[{Raghu, Pandey, and Pandey(2026)}]{raghu2026proper}
+Raghu, S.; Pandey, S.; and Pandey, S. 2026.
+\newblock Proper Scoring Rules for Agentic Uncertainty Quantification.
+\newblock \emph{arXiv preprint arXiv:2605.24756}.
+
+\bibitem[{Robins and Finkelstein(2000)}]{robins2000correcting}
+Robins, J.~M.; and Finkelstein, D.~M. 2000.
+\newblock Correcting for Noncompliance and Dependent Censoring in an {AIDS}
+  Clinical Trial with Inverse Probability of Censoring Weighted ({IPCW})
+  Log-Rank Tests.
+\newblock \emph{Biometrics}, 56(3): 779--788.
+
+\bibitem[{Robins, Rotnitzky, and Zhao(1994)}]{robins1994estimation}
+Robins, J.~M.; Rotnitzky, A.; and Zhao, L.~P. 1994.
+\newblock Estimation of Regression Coefficients When Some Regressors Are Not
+  Always Observed.
+\newblock \emph{Journal of the American Statistical Association}, 89(427):
+  846--866.
+
+\bibitem[{Ruan et~al.(2026)Ruan, Huang, Zhou, Wei, Wang, and
+  Sun}]{ruan2026doomed}
+Ruan, K.; Huang, Z.; Zhou, Z.; Wei, Q.; Wang, X.; and Sun, H. 2026.
+\newblock Doomed from the Start: Early Abort of {LLM} Agent Episodes via a
+  Recall-Controlled Probe Cascade.
+\newblock \emph{arXiv preprint arXiv:2607.06503}.
+
+\bibitem[{Satten and Datta(2001)}]{satten2001kaplan}
+Satten, G.~A.; and Datta, S. 2001.
+\newblock The {K}aplan--{M}eier Estimator as an
+  Inverse-Probability-of-Censoring Weighted Average.
+\newblock \emph{The American Statistician}, 55(3): 207--210.
+
+\bibitem[{{SWE-agent Team}(2024)}]{sweagent2024code}
+{SWE-agent Team}. 2024.
+\newblock {SWE}-agent, releases v0.6.1 and v0.7.0.
+\newblock \url{https://github.com/SWE-agent/SWE-agent}, file
+  \texttt{sweagent/environment/swe\_env.py}.
+\newblock Source of the \texttt{early\_exit} status.
+
+\bibitem[{Wang(2026)}]{wang2026interface}
+Wang, W. 2026.
+\newblock Interface-Induced Trajectory Censoring.
+\newblock \emph{arXiv preprint arXiv:2609.03966}.
+
+\bibitem[{Weidinger et~al.(2025)Weidinger, Raji, Wallach, Mitchell, Wang,
+  Salaudeen, Bommasani, Ganguli, Koyejo, and Isaac}]{weidinger2025evalscience}
+Weidinger, L.; Raji, I.~D.; Wallach, H.; Mitchell, M.; Wang, A.; Salaudeen, O.;
+  Bommasani, R.; Ganguli, D.; Koyejo, S.; and Isaac, W. 2025.
+\newblock Toward an Evaluation Science for Generative {AI} Systems.
+\newblock \emph{arXiv preprint arXiv:2503.05336}.
+
+\bibitem[{Yang et~al.(2024)Yang, Jimenez, Wettig, Lieret, Yao, Narasimhan, and
+  Press}]{yang2024sweagent}
+Yang, J.; Jimenez, C.~E.; Wettig, A.; Lieret, K.; Yao, S.; Narasimhan, K.; and
+  Press, O. 2024.
+\newblock {SWE}-agent: Agent-Computer Interfaces Enable Automated Software
+  Engineering.
+\newblock \emph{Advances in Neural Information Processing Systems (NeurIPS)}.
+
+\bibitem[{Yao et~al.(2025)Yao, Shinn, Razavi, and Narasimhan}]{yao2025taubench}
+Yao, S.; Shinn, N.; Razavi, P.; and Narasimhan, K. 2025.
+\newblock {$\tau$}-bench: A Benchmark for Tool-Agent-User Interaction in
+  Real-World Domains.
+\newblock In \emph{International Conference on Learning Representations
+  (ICLR)}.
+
+\bibitem[{Zhao et~al.(2026)Zhao, Li, Li, Zhao, Barr, Sarro, and
+  Ye}]{zhao2026failure}
+Zhao, X.; Li, H.; Li, S.; Zhao, T.; Barr, E.~T.; Sarro, F.; and Ye, H. 2026.
+\newblock Failure as a Process: An Anatomy of {CLI} Coding Agent Trajectories.
+\newblock \emph{arXiv preprint arXiv:2607.09510}.
+
+\bibitem[{Zhu and Chang(2026)}]{zhu2026guardrails}
+Zhu, P.; and Chang, S. 2026.
+\newblock When Guardrails Look Effective: Construct Validity Failures in {LLM}
+  Agent Commerce Evaluation.
+\newblock \emph{arXiv preprint arXiv:2609.01519}.
+
+\end{thebibliography}

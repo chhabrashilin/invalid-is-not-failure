@@ -1,34 +1,33 @@
 TAS 2026 CAMERA-READY (paper 7658), single author
 ==================================================
 
-Files
------
-  main.tex                        camera-ready source (authors shown, copyright slug on)
-  references.bib                  24 entries; all 11 arXiv IDs checked against arxiv.org
-  figures/fig1_censoring_bias.pdf three-panel figure (TrueType fonts)
-  aaai2026.sty, aaai2026.bst      AAAI-26 style files copied from the draft folder
-  main_preview_xetex.pdf          PREVIEW ONLY, built with Tectonic/XeTeX and TeX Gyre
-                                  (Times-metric) fonts. Do not submit it; build the
-                                  real PDF with pdfLaTeX as below.
+Ready-to-upload files (built 2026-09-30 with pdfLaTeX, TeX Live 2026, Docker)
+------------------------------------------------------------------------------
+  C:\Users\chhab\Downloads\TAS2026_Chhabra_camera_ready.pdf   camera-ready PDF
+  C:\Users\chhab\Downloads\TAS2026_Chhabra_sources.zip        paper sources
 
-Build (Overleaf)
-----------------
-1. New blank project. Upload main.tex, references.bib, the two style files, and
-   figures/fig1_censoring_bias.pdf (keep the figures/ folder).
-2. Compiler: pdfLaTeX. Recompile twice so the bibliography resolves.
-3. Check: main text ends on page 4 (references may start on page 4); no [?]
-   citations; the copyright line appears at the bottom of page 1 column 1.
+Checks on that PDF: official AAAI-27 kit (aaai2027.sty/.bst, TemplateVersion
+2027.1); US Letter; 6 pages, main text ends on page 4 and the references start
+there; no BibTeX errors, overfull boxes, or undefined references; every font
+embedded as Type 1; no Type 3 and no CID/Identity-H fonts (figure text was
+converted to outlines with Ghostscript, as the AAAI-27 instructions require).
 
-AAAI-27 author kit
-------------------
-The proceedings email names the AAAI-27 kit (https://aaai.org/authorkit27/,
-which blocks scripted downloads). Download it in a browser, put its .sty and
-.bst in this folder, and change the two "aaai2026" strings in main.tex
-(\usepackage and \bibliographystyle). Recheck the page count afterwards.
+Files in this folder
+--------------------
+  main.tex, main.bbl, references.bib
+  aaai2027.sty, aaai2027.bst      official AAAI-27 author kit (aaai.org/authorkit27)
+  figures/*.pdf                   figures with text outlined
+
+Rebuild
+-------
+pdflatex main; bibtex main; pdflatex main; pdflatex main  (pdfLaTeX only; the
+AAAI-27 style stops under XeLaTeX or LuaLaTeX). Do not add \bibliographystyle:
+aaai2027.sty sets it.
 
 Before uploading to the AAAI CRC site (NOT EasyChair)
 ------------------------------------------------------
-[ ] Build with the AAAI-27 kit if its rules differ from AAAI-26.
+[ ] The AAAI-27 style prints "Copyright (c) 2027". If the editors want the
+    symposium year, they will say so; do not change it on your own.
 [ ] Confirm affiliation line and email are as you want them.
 [ ] Complete the AAAI copyright form requested by the CRC site.
 [ ] Optional: add an Acknowledgments section (funding, compute) before the
@@ -51,10 +50,23 @@ R1.8        Prop. 3 (rerun until valid): removes 70-72% of SWE-agent's bias.
 R1.9        Early abort described as outcome-dependent, outside the model.
 R1.10       Appendix A.6 now holds the misspecified-hazard results, with corpus
             (SWE-agent) and hazards (0.5%, 1%) stated.
+R3.2 (b)    Horizon distributions by outcome shown (Appendix Figure 2).
+R3.3 (b)    Target estimand stated (success within declared budgets); all nine
+            SWE-agent exit statuses classified by Definition 1 (Appendix Table 3).
+R3.5 (b)    Structurally different mechanism added: a deterministic hard cap,
+            where independence holds but positivity fails, so weighting
+            collapses to the complete case (23.04% vs true 16.73%) and only the
+            bounds stay valid.
 R4.1        Bounded non-binary scores covered after Prop. 1.
 R4.2        Prop. 4: Kaplan-Meier weighting needs only observed quantities;
             validated under constant and step-dependent hazards; observed
             container failures (early_exit) analysed as real censoring.
+Extra       Prop. 2 stated for any observation probabilities, including
+            outcome-dependent ones; the q = 2% bounds moved to Appendix A.2.
+
+Page budget (checked with Times-metric fonts): main text ends on page 4 with
+about three lines to spare; 6 pages in total. If the AAAI-27 kit or real
+pdfLaTeX Times pushes the Conclusion onto page 5, shorten Related Work first.
 
 Corrections to numbers in the reviewed version
 ----------------------------------------------
