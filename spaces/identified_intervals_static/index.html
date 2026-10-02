@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Identified intervals</title>
+  <style>
+    :root {
+      --bg: #f6f4ef;
+      --ink: #1c1a16;
+      --muted: #5c564c;
+      --line: #d7d0c4;
+      --accent: #1f4d3a;
+      --card: #fffdf8;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Source Serif 4", "Iowan Old Style", "Palatino Linotype", Palatino, serif;
+      background:
+        radial-gradient(circle at 10% 0%, #ebe4d6 0%, transparent 45%),
+        linear-gradient(180deg, #f8f5ee 0%, var(--bg) 100%);
+      color: var(--ink);
+      line-height: 1.45;
+    }
+    main {
+      max-width: 880px;
+      margin: 0 auto;
+      padding: 2.5rem 1.25rem 4rem;
+    }
+    h1 {
+      font-size: clamp(1.6rem, 3vw, 2.1rem);
+      font-weight: 600;
+      margin: 0 0 0.4rem;
+      letter-spacing: -0.02em;
+    }
+    .sub {
+      color: var(--muted);
+      margin: 0 0 1.5rem;
+      max-width: 40rem;
+    }
+    label {
+      display: block;
+      font-size: 0.95rem;
+      margin-bottom: 0.4rem;
+      color: var(--muted);
+    }
+    textarea {
+      width: 100%;
+      min-height: 180px;
+      padding: 0.9rem 1rem;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      background: var(--card);
+      font-family: "IBM Plex Mono", "Consolas", monospace;
+      font-size: 0.85rem;
+      resize: vertical;
+    }
+    .row {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      margin: 0.9rem 0 1.5rem;
+    }
+    button {
+      border: 0;
+      background: var(--accent);
+      color: #f7faf8;
+      padding: 0.65rem 1.1rem;
+      border-radius: 4px;
+      font: inherit;
+      cursor: pointer;
+    }
+    button.secondary {
+      background: transparent;
+      color: var(--accent);
+      border: 1px solid var(--accent);
+    }
+    .err {
+      color: #8a1f1f;
+      margin: 0 0 1rem;
+      white-space: pre-wrap;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--card);
+      border: 1px solid var(--line);
+      font-size: 0.92rem;
+      margin-bottom: 1.25rem;
+    }
+    th, td {
+      text-align: left;
+      padding: 0.55rem 0.7rem;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+    }
+    th { color: var(--muted); font-weight: 600; }
+    h2 {
+      font-size: 1.1rem;
+      margin: 1.4rem 0 0.5rem;
+    }
+    ul { margin: 0.2rem 0 0; padding-left: 1.2rem; }
+    .notes {
+      color: var(--muted);
+      font-size: 0.92rem;
+      margin-top: 1.5rem;
+    }
+    a { color: var(--accent); }
+  </style>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <main>
+    <h1>Identified intervals and sharp rank intervals</h1>
+    <p class="sub">
+      Paste leaderboard counts (<code>name,N,resolved,E,U</code>).
+      Companion tool for <em>Invalid Is Not Failure</em> (TAS 2026).
+      Runs entirely in your browser (free Static Space; no Gradio compute).
+    </p>
+
+    <label for="csv">CSV</label>
+    <textarea id="csv">name,N,resolved,E,U
+agent_a,500,350,10,5
+agent_b,500,340,0,20
+agent_c,500,330,15,0
+agent_d,500,300,0,0</textarea>
+
+    <div class="row">
+      <button id="run" type="button">Compute</button>
+      <button id="reset" class="secondary" type="button">Reset example</button>
+    </div>
+
+    <p id="err" class="err" hidden></p>
+    <div id="out" hidden>
+      <h2>Intervals</h2>
+      <div id="table"></div>
+      <h2>Identified orderings</h2>
+      <div id="pairs"></div>
+      <p class="notes" id="notes"></p>
+    </div>
+
+    <p class="notes">
+      Dataset:
+      <a href="https://huggingface.co/datasets/shilinc1/infra-censoring-derived">shilinc1/infra-censoring-derived</a>
+      · Code:
+      <a href="https://github.com/chhabrashilin/invalid-is-not-failure">invalid-is-not-failure</a>
+    </p>
+  </main>
+
+  <script>
+    const EXAMPLE = `name,N,resolved,E,U
+agent_a,500,350,10,5
+agent_b,500,340,0,20
+agent_c,500,330,15,0
+agent_d,500,300,0,0`;
+
+    function parseCsv(text) {
+      const lines = text.trim().split(/\r?\n/).filter(Boolean);
+      if (lines.length < 2) throw new Error("Paste a CSV with header name,N,resolved,E,U");
+      const header = lines[0].split(",").map((h) => h.trim());
+      const need = ["name", "N", "resolved", "E", "U"];
+      for (const k of need) {
+        if (!header.includes(k)) throw new Error("CSV must have columns: name,N,resolved,E,U");
+      }
+      const idx = Object.fromEntries(need.map((k) => [k, header.indexOf(k)]));
+      const rows = [];
+      for (let i = 1; i < lines.length; i++) {
+        const parts = lines[i].split(",").map((x) => x.trim());
+        const row = {
+          name: parts[idx.name],
+          n: Number(parts[idx.N]),
+          resolved: Number(parts[idx.resolved]),
+          e: Number(parts[idx.E]),
+          u: Number(parts[idx.U]),
+        };
+        if (!row.name || !(row.n > 0) || [row.resolved, row.e, row.u].some((x) => Number.isNaN(x) || x < 0)) {
+          throw new Error(`Bad row ${i + 1}`);
+        }
+        if (row.resolved + row.e + row.u > row.n) {
+          throw new Error(`Row ${i + 1}: resolved+E+U cannot exceed N`);
+        }
+        row.lo = row.resolved / row.n;
+        row.hiStrict = (row.resolved + row.e) / row.n;
+        row.hiBroad = (row.resolved + row.e + row.u) / row.n;
+        rows.push(row);
+      }
+      rows.sort((a, b) => b.lo - a.lo);
+      return rows;
+    }
+
+    function rankIntervals(lo, hi) {
+      const n = lo.length;
+      const best = new Array(n);
+      const worst = new Array(n);
+      for (let i = 0; i < n; i++) {
+        let b = 1;
+        let w = 1;
+        for (let j = 0; j < n; j++) {
+          if (lo[j] > hi[i]) b += 1;
+          if (j !== i && hi[j] > lo[i]) w += 1;
+        }
+        best[i] = b;
+        worst[i] = w;
+      }
+      return { best, worst };
+    }
+
+    function pct(x) {
+      return (100 * x).toFixed(2) + "%";
+    }
+
+    function analyse(text) {
+      const rows = parseCsv(text);
+      const lo = rows.map((r) => r.lo);
+      const hiS = rows.map((r) => r.hiStrict);
+      const hiB = rows.map((r) => r.hiBroad);
+      const rs = rankIntervals(lo, hiS);
+      const rb = rankIntervals(lo, hiB);
+
+      let table = "<table><thead><tr><th>name</th><th>score (lo)</th><th>hi_strict</th><th>hi_broad</th><th>rank_strict</th><th>rank_broad</th></tr></thead><tbody>";
+      rows.forEach((r, i) => {
+        table += `<tr><td>${r.name}</td><td>${pct(r.lo)}</td><td>${pct(r.hiStrict)}</td><td>${pct(r.hiBroad)}</td><td>[${rs.best[i]}, ${rs.worst[i]}]</td><td>[${rb.best[i]}, ${rb.worst[i]}]</td></tr>`;
+      });
+      table += "</tbody></table>";
+
+      function pairBlock(label, hi) {
+        const items = [];
+        for (let i = 0; i < rows.length; i++) {
+          for (let j = 0; j < rows.length; j++) {
+            if (i === j) continue;
+            if (lo[i] > hi[j]) {
+              items.push(`<li>${rows[i].name} above ${rows[j].name} (${pct(lo[i])} &gt; ${pct(hi[j])})</li>`);
+            }
+          }
+        }
+        return `<p><strong>${label}:</strong> ${items.length} identified orderings (lo_A &gt; hi_B)</p>` +
+          (items.length ? `<ul>${items.join("")}</ul>` : "<p>(none)</p>");
+      }
+
+      const pairs = pairBlock("Strict reading", hiS) + pairBlock("Broad reading", hiB);
+      const notes =
+        "Strict: only E is missing. Broad: E and U are missing. " +
+        "Leaderboard score is the lower endpoint. Rank intervals follow the paper's sharp-rank argument. " +
+        "This tool does not add bootstrap sampling uncertainty.";
+      return { table, pairs, notes };
+    }
+
+    const csv = document.getElementById("csv");
+    const err = document.getElementById("err");
+    const out = document.getElementById("out");
+
+    function run() {
+      try {
+        const res = analyse(csv.value);
+        err.hidden = true;
+        out.hidden = false;
+        document.getElementById("table").innerHTML = res.table;
+        document.getElementById("pairs").innerHTML = res.pairs;
+        document.getElementById("notes").textContent = res.notes;
+      } catch (e) {
+        out.hidden = true;
+        err.hidden = false;
+        err.textContent = e.message || String(e);
+      }
+    }
+
+    document.getElementById("run").addEventListener("click", run);
+    document.getElementById("reset").addEventListener("click", () => {
+      csv.value = EXAMPLE;
+      run();
+    });
+    run();
+  </script>
+</body>
+</html>
