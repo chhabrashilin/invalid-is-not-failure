@@ -6,7 +6,7 @@ colorTo: green
 sdk: static
 pinned: false
 license: mit
-short_description: Identified success intervals and sharp rank intervals (browser-only)
+short_description: Identified intervals and sharp ranks (browser-only)
 datasets:
 - shilinc1/infra-censoring-derived
 ---
