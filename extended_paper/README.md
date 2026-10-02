@@ -46,9 +46,14 @@ uv run python scripts/extended/assumption_tests.py
 uv run python scripts/extended/real_case_uncertainty.py
 uv run python scripts/extended/dr_estimator.py
 uv run --with scikit-learn python scripts/extended/dr_estimator_v2.py
+uv run python scripts/extended/rank_confidence.py
 uv run python scripts/extended/make_extended_figures.py
 ```
 
+`rank_confidence.py` writes `results/extended/rank_confidence.json` and
+`results/extended/rank_confidence_sim.json` (joint task bootstrap of sharp
+identified rank intervals; see `docs/rank_confidence_sets.md`). Verify any
+rank-inference citations yourself before putting them in the paper.
 Note: `fetch_bash_only_exits.py --split verified` rewrites
 `results/extended/bash_only_runs.csv`, so run `repair_labels.py` after it.
 

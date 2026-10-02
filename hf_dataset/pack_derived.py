@@ -21,6 +21,8 @@ INCLUDE = [
     "dr_estimator.json",
     "dr_estimator_v2.json",
     "label_repair.json",
+    "rank_confidence.json",
+    "rank_confidence_sim.json",
 ]
 
 

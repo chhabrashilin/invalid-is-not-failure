@@ -907,9 +907,13 @@ the scripts in \texttt{scripts/extended/} then run in this order:
 \texttt{real\_case\_uncertainty.py};
 \item \texttt{dr\_estimator.py}, \texttt{dr\_estimator\_v2.py} (needs
 scikit-learn);
+\item \texttt{rank\_confidence.py} (joint task bootstrap of sharp identified
+rank intervals; see \texttt{docs/rank\_confidence\_sets.md}; verify
+rank-inference citations before naming them);
 \item \texttt{make\_extended\_figures.py}.
 \end{itemize}
-The Gradio app under \texttt{spaces/identified\_intervals/} computes identified
+The Gradio app under \texttt{spaces/identified\_intervals/} and the free Static
+Space under \texttt{spaces/identified\_intervals\_static/} compute identified
 intervals and sharp rank intervals from pasted leaderboard counts.
 
 \end{document}
