@@ -66,19 +66,13 @@ cd C:\Users\chhab\Downloads\Github\chhabrashilin\research\resched
 pip install huggingface_hub
 huggingface-cli login
 python hf_dataset/pack_derived.py
-python hf_dataset/upload.py --repo chhabrashilin/infra-censoring-derived
+python hf_dataset/upload.py --repo shilinc1/infra-censoring-derived
 ```
 
-3. Open the dataset page. Confirm the card lists sources, pinned commits, licenses,
-   and regeneration commands.
-4. Put the dataset URL into `README.md` and the extended paper Reproduction
-   paragraph; commit and push.
+**Already done.** Live at:
+https://huggingface.co/datasets/shilinc1/infra-censoring-derived
 
-**Check:** upstream SWE-bench / Multi-SWE-bench licenses before uploading anything
-beyond the packed JSON aggregates.
-
-**Done when:** `https://huggingface.co/datasets/chhabrashilin/infra-censoring-derived`
-loads and the files are public.
+(HF account is `shilinc1`; GitHub account is `chhabrashilin`. That mismatch is fine.)
 
 ---
 

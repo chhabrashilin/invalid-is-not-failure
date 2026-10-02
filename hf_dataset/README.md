@@ -93,6 +93,7 @@ after you mint the DOI and dataset repo:
 
 ## Related links
 
-- Code: `https://github.com/chhabrashilin/invalid-is-not-failure` (confirm after push)
+- Code: https://github.com/chhabrashilin/invalid-is-not-failure
+- Dataset: https://huggingface.co/datasets/shilinc1/infra-censoring-derived
 - Interactive intervals tool: Hugging Face Space (create from `spaces/identified_intervals/`)
 - Zenodo: pending GitHub–Zenodo release DOI
