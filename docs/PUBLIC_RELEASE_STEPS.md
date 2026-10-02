@@ -81,20 +81,10 @@ https://huggingface.co/datasets/shilinc1/infra-censoring-derived
 Current HF policy: Gradio/Docker Spaces need a paid plan, except up to 2
 ZeroGPU Gradio Spaces on some free personal accounts. Prefer **Static**.
 
-1. Open https://huggingface.co/new-space as `shilinc1`.
-2. Set:
-   - Space name: `identified-intervals`
-   - SDK: **Static** (not Gradio)
-   - Visibility: Public
-3. Upload both files from
-   `spaces/identified_intervals_static/`:
-   - `index.html`
-   - `README.md`
-4. Open the Space URL and confirm the example table appears.
-5. Send the Space URL back so the README/paper links can be updated.
+**Already done.** Live at:
+https://huggingface.co/spaces/shilinc1/identified-intervals
 
-**Done when:** `https://huggingface.co/spaces/shilinc1/identified-intervals` loads
-and Compute shows intervals.
+(Static SDK; free. Gradio is not required.)
 
 ---
 

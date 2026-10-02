@@ -19,9 +19,9 @@ This repository releases the symposium paper, an extended preprint, reproduction
 | GitHub | https://github.com/chhabrashilin/invalid-is-not-failure |
 | Zenodo DOI | _pending (create a GitHub release after enabling Zenodo)_ |
 | Hugging Face dataset | https://huggingface.co/datasets/shilinc1/infra-censoring-derived |
-| Hugging Face Space | _pending_ |
+| Hugging Face Space | https://huggingface.co/spaces/shilinc1/identified-intervals |
 
-Update `extended_paper/main.tex` once the Zenodo DOI and Space URL exist.
+Update `extended_paper/main.tex` once the Zenodo DOI exists.
 
 ## What is in this repo
 
